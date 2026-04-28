@@ -287,20 +287,34 @@
 </svelte:head>
 
 <!--
-  SEO / LLM fallback: server-rendered article body in <noscript>. Bots and
-  LLM fetchers (which don't execute JS) parse this as the page's real content.
-  JS-enabled visitors never see it; the view-specific UI below is what they get.
+  SEO / LLM fallback: server-rendered article body, visible to any parser
+  that does not execute JS (search bots, LLM fetchers, readability cleaners).
+  Hidden from real browsers via @media (scripting: enabled) below — no
+  duplicate content for users, but indexers see the full body.
+
+  Skipped for view='doc' since DocView already renders the same content.
 -->
-<noscript>
-  <article>
-    <h1>{pageTitle}</h1>
-    {@html seoHtml}
-    <hr />
-    <p>
-      Source markdown: <a href={`/${page.slug}.md`}>/{page.slug}.md</a>
-    </p>
-  </article>
-</noscript>
+{#if page.view !== 'doc'}
+  <main class="seo-main" id="main-content">
+    <article
+      class="seo-body prose"
+      itemscope
+      itemtype="https://schema.org/Article"
+    >
+      <h1 itemprop="headline">{pageTitle}</h1>
+      {#if description}
+        <p itemprop="description"><em>{description}</em></p>
+      {/if}
+      <div itemprop="articleBody">
+        {@html seoHtml}
+      </div>
+      <hr />
+      <p>
+        Source markdown: <a href={`/${page.slug}.md`}>/{page.slug}.md</a>
+      </p>
+    </article>
+  </main>
+{/if}
 
 <div
   class="page-wrapper theme-{page.theme ?? 'default'}"
@@ -662,6 +676,38 @@
 </div>
 
 <style>
+  /* ═══ SEO body (LLM fallback) ═══
+     Server-rendered article kept fully visible in the DOM so any HTML
+     parser — including JS-executing readability cleaners that strip
+     display:none / visibility:hidden / off-screen content — sees the
+     real article text. Real visitors don't see it because the
+     view-specific UI (SlidesView, KanbanView, etc.) renders on top with
+     position:fixed z-index, covering the viewport. The article still
+     occupies the document below; that's fine, no user ever scrolls
+     under a fixed-overlay UI. */
+  .seo-main {
+    max-width: 720px;
+    margin: 2rem auto;
+    padding: 1rem;
+    color: var(--text-primary);
+  }
+  /* Hide from JS-enabled browsers — the view-specific UI takes over.
+     Bots and most readability extractors don't process @media rules,
+     so they still see the article. */
+  @media (scripting: enabled) {
+    .seo-main {
+      display: none;
+    }
+  }
+  .seo-body :global(h1),
+  .seo-body :global(h2),
+  .seo-body :global(h3) {
+    margin: 1em 0 0.5em;
+  }
+  .seo-body :global(p) {
+    margin: 0.5em 0;
+  }
+
   /* ═══ Page wrapper ═══ */
   .page-wrapper {
     background: var(--bg);
