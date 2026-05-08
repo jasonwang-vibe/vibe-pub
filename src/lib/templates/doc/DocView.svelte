@@ -314,6 +314,20 @@
     background: rgba(255, 255, 255, 0.06);
   }
 
+  /* Top-level blocks are ul/ol.block-el (not .block-el > ul); hide markers when gutter shows */
+  article.doc-view :global(ul.block-el:is(.block-active, .block-el-commented)),
+  article.doc-view :global(ol.block-el:is(.block-active, .block-el-commented)) {
+    list-style: none;
+    list-style-type: none;
+  }
+
+  article.doc-view :global(ul.block-el:is(.block-active, .block-el-commented) > li),
+  article.doc-view :global(ol.block-el:is(.block-active, .block-el-commented) > li) {
+    list-style: none;
+    list-style-type: none;
+    padding-left: 0;
+  }
+
   article.doc-view :global(.bcb) {
     position: absolute;
     left: calc(100% + 12px);
