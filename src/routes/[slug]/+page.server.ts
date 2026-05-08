@@ -1,7 +1,7 @@
 // src/routes/[slug]/+page.server.ts
 import { error, isHttpError } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getDb, getCommentsByPage } from '$lib/server/db';
+import { getDb, getCommentsByPage, getPageBySlugGlobal } from '$lib/server/db';
 import { renderMarkdown, parseFrontmatter } from '$lib/server/markdown';
 import { parseBlocks } from '$lib/templates';
 import { parseKanbanBlocks } from '$lib/templates/kanban/parser';
@@ -10,24 +10,19 @@ import { parseTimelineBlocks } from '$lib/templates/timeline/parser';
 import { parseSlidesBlocks } from '$lib/templates/slides/parser';
 import { parseDashboardBlocks } from '$lib/templates/dashboard/parser';
 
-async function getPageBySlugPublic(db: D1Database, slug: string) {
-  return db
-    .prepare('SELECT * FROM pages WHERE slug = ?')
-    .bind(slug)
-    .first<import('$lib/types').Page>();
-}
-
-export const load: PageServerLoad = async ({ params, platform }) => {
+export const load: PageServerLoad = async ({ params, platform, locals }) => {
   if (!platform) throw error(500, 'No platform');
 
   try {
     const db = getDb(platform);
 
-    const page = await getPageBySlugPublic(db, params.slug);
+    const page = await getPageBySlugGlobal(db, params.slug);
     if (!page) throw error(404, 'Page not found');
 
     if (page.access === 'private') {
-      throw error(403, 'This page is private');
+      if (!page.user_id || locals.user?.id !== page.user_id) {
+        throw error(403, 'This page is private');
+      }
     }
 
     // Strip frontmatter before rendering
@@ -129,6 +124,9 @@ export const load: PageServerLoad = async ({ params, platform }) => {
       if (u) pageUser = { username: u.username };
     }
 
+    const isOwner = !!page.user_id && locals.user?.id === page.user_id;
+    const canClaim = !page.user_id && !!locals.user;
+
     return {
       page,
       html,
@@ -142,6 +140,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
       timelineData,
       slidesData,
       dashboardData,
+      isOwner,
+      canClaim,
     };
   } catch (e: unknown) {
     if (isHttpError(e)) throw e;

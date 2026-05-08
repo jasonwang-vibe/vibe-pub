@@ -1,4 +1,4 @@
-import type { Page, Comment, User } from '$lib/types';
+import type { Page, Comment, User, PageVersionSnapshotRow } from '$lib/types';
 
 export function getDb(platform: App.Platform) {
   return platform.env.DB;
@@ -45,6 +45,17 @@ export async function getPageById(db: D1Database, id: string): Promise<Page | nu
   return db.prepare('SELECT * FROM pages WHERE id = ?').bind(id).first<Page>();
 }
 
+/** For a slug, returns the page row’s `user_id` (may be null if unclaimed), or null if no page. */
+export async function getPageUserIdBySlug(
+  db: D1Database,
+  slug: string
+): Promise<{ user_id: string | null } | null> {
+  return db
+    .prepare('SELECT user_id FROM pages WHERE slug = ?')
+    .bind(slug)
+    .first<{ user_id: string | null }>();
+}
+
 export async function getPageBySlug(
   db: D1Database,
   slug: string,
@@ -60,6 +71,11 @@ export async function getPageBySlug(
     .prepare('SELECT * FROM pages WHERE slug = ? AND user_id IS NULL')
     .bind(slug)
     .first<Page>();
+}
+
+/** Resolve a page by slug for any owner (claimed or anonymous). Used by `/{slug}`, `.md`, `/print`, etc. */
+export async function getPageBySlugGlobal(db: D1Database, slug: string): Promise<Page | null> {
+  return db.prepare('SELECT * FROM pages WHERE slug = ?').bind(slug).first<Page>();
 }
 
 export async function getPagesByUser(db: D1Database, userId: string): Promise<Page[]> {
@@ -110,6 +126,68 @@ export async function updatePage(
     .run();
 }
 
+const PAGE_VERSION_RETENTION = 20;
+
+/** Append a row to `page_versions` and prune rows older than the retention window. */
+export async function appendPageVersionSnapshot(
+  db: D1Database,
+  pageId: string,
+  snapshot: { markdown: string; title: string | null }
+): Promise<void> {
+  const maxRow = await db
+    .prepare('SELECT MAX(version) as max_v FROM page_versions WHERE page_id = ?')
+    .bind(pageId)
+    .first<{ max_v: number | null }>();
+  const nextVersion = (maxRow?.max_v ?? 0) + 1;
+
+  const versionId = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+  await db
+    .prepare(
+      `INSERT INTO page_versions (id, page_id, version, markdown, title)
+       VALUES (?, ?, ?, ?, ?)`
+    )
+    .bind(versionId, pageId, nextVersion, snapshot.markdown, snapshot.title)
+    .run();
+
+  await db
+    .prepare(
+      `DELETE FROM page_versions
+       WHERE page_id = ? AND version <= (
+         SELECT MAX(version) - ? FROM page_versions WHERE page_id = ?
+       )`
+    )
+    .bind(pageId, PAGE_VERSION_RETENTION, pageId)
+    .run();
+}
+
+/** All version snapshots for a page, newest `version` first (for history API / UI). */
+export async function getPageVersionsByPageId(
+  db: D1Database,
+  pageId: string
+): Promise<PageVersionSnapshotRow[]> {
+  const result = await db
+    .prepare(
+      'SELECT version, title, created, markdown FROM page_versions WHERE page_id = ? ORDER BY version DESC'
+    )
+    .bind(pageId)
+    .all<PageVersionSnapshotRow>();
+  return result.results;
+}
+
+/** One snapshot row, or null if that `version` does not exist for the page. */
+export async function getPageVersionByPageIdAndVersion(
+  db: D1Database,
+  pageId: string,
+  versionNum: number
+): Promise<PageVersionSnapshotRow | null> {
+  return db
+    .prepare(
+      'SELECT version, title, created, markdown FROM page_versions WHERE page_id = ? AND version = ?'
+    )
+    .bind(pageId, versionNum)
+    .first<PageVersionSnapshotRow>();
+}
+
 export async function deletePage(db: D1Database, id: string): Promise<void> {
   await db.prepare('DELETE FROM pages WHERE id = ?').bind(id).run();
 }
@@ -155,9 +233,18 @@ export async function createComment(
     .first<Comment>() as Promise<Comment>;
 }
 
-export async function getCommentsByPage(db: D1Database, pageId: string): Promise<Comment[]> {
+export async function getCommentsByPage(
+  db: D1Database,
+  pageId: string,
+  opts?: { unresolvedOnly?: boolean }
+): Promise<Comment[]> {
+  const unresolvedOnly = opts?.unresolvedOnly === true;
   const result = await db
-    .prepare('SELECT * FROM comments WHERE page_id = ? ORDER BY created ASC')
+    .prepare(
+      unresolvedOnly
+        ? 'SELECT * FROM comments WHERE page_id = ? AND resolved = 0 ORDER BY created ASC'
+        : 'SELECT * FROM comments WHERE page_id = ? ORDER BY created ASC'
+    )
     .bind(pageId)
     .all<Comment>();
   return result.results;
@@ -172,6 +259,26 @@ export async function updateCommentAnchor(
   const anchorStr =
     anchor == null ? null : typeof anchor === 'string' ? anchor : JSON.stringify(anchor);
   await db.prepare('UPDATE comments SET anchor = ? WHERE id = ?').bind(anchorStr, commentId).run();
+}
+
+export async function resolveAllCommentsForPage(db: D1Database, pageId: string): Promise<void> {
+  await db.prepare('UPDATE comments SET resolved = 1 WHERE page_id = ?').bind(pageId).run();
+}
+
+export async function resolveCommentsForPageByIds(
+  db: D1Database,
+  pageId: string,
+  commentIds: string[]
+): Promise<void> {
+  const placeholders = commentIds.map(() => '?').join(', ');
+  await db
+    .prepare(`UPDATE comments SET resolved = 1 WHERE page_id = ? AND id IN (${placeholders})`)
+    .bind(pageId, ...commentIds)
+    .run();
+}
+
+export async function getUserById(db: D1Database, id: string): Promise<User | null> {
+  return db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first<User>();
 }
 
 export async function getUserByEmail(db: D1Database, email: string): Promise<User | null> {

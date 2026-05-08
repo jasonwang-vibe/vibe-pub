@@ -13,9 +13,16 @@ function parseAnchor(raw: string | null): CommentAnchor | string | null {
   }
 }
 
-export const GET: RequestHandler = async ({ params, platform }) => {
+export const GET: RequestHandler = async ({ params, platform, url }) => {
   if (!platform) throw error(500, 'Platform not available');
-  const rawComments = await getCommentsByPage(platform.env.DB, params.pageId);
+  const includeAll =
+    url.searchParams.get('all') === '1' ||
+    url.searchParams.get('all') === 'true' ||
+    url.searchParams.get('include_resolved') === '1' ||
+    url.searchParams.get('include_resolved') === 'true';
+  const rawComments = await getCommentsByPage(platform.env.DB, params.pageId, {
+    unresolvedOnly: !includeAll,
+  });
   // Parse anchor JSON for each comment
   const comments = rawComments.map((c) => ({
     ...c,
@@ -38,10 +45,13 @@ export const POST: RequestHandler = async ({ params, request, platform, locals }
   const anchor = body.anchor ?? null;
   const anchor_hint: string | undefined = body.anchor_hint;
 
+  const trimmedName = typeof body.display_name === 'string' ? body.display_name.trim() : '';
+  const display_name = trimmedName ? trimmedName : locals.user ? locals.user.username : 'Anonymous';
+
   const comment = await createComment(db, {
     page_id: params.pageId,
     user_id: locals.user?.id,
-    display_name: body.display_name || (locals.user ? undefined : 'Anonymous'),
+    display_name,
     body: body.body,
     anchor,
     anchor_hint,
