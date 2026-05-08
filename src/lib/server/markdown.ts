@@ -7,11 +7,15 @@ import remarkRehype from 'remark-rehype';
 import rehypeStringify from 'rehype-stringify';
 import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
-import { createHighlighter } from 'shiki';
+import { createHighlighter, createJavaScriptRegexEngine } from 'shiki';
 import type { PageFrontmatter } from '$lib/types';
 
 let highlighterPromise: ReturnType<typeof createHighlighter> | null = null;
 
+/**
+ * Use JS RegExp engine (not Oniguruma WASM) so highlighting works on Cloudflare Workers.
+ * Default Shiki WASM often fails in Workers; see https://github.com/shikijs/shiki/issues/590
+ */
 function getHighlighter() {
   if (!highlighterPromise) {
     highlighterPromise = createHighlighter({
@@ -37,6 +41,7 @@ function getHighlighter() {
         'c',
         'cpp',
       ],
+      engine: createJavaScriptRegexEngine(),
     });
   }
   return highlighterPromise;

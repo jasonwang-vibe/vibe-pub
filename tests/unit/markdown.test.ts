@@ -36,6 +36,7 @@ describe('renderMarkdown', () => {
     const html = await renderMarkdown('```javascript\nconst x = 1;\n```');
     expect(html).toContain('const');
     expect(html).toContain('<pre');
+    expect(html).toContain('shiki');
   });
 
   it('renders checkboxes', async () => {
