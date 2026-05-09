@@ -74,10 +74,8 @@ export async function getPageById(db: D1Database, id: string): Promise<Page | nu
  */
 export async function getPageByUrlSegment(db: D1Database, segment: string): Promise<Page | null> {
   const id = extractIdFromUrlSegment(segment);
-  if (/^[A-Za-z0-9]{8}$/.test(id)) {
-    const byId = await getPageById(db, id);
-    if (byId) return byId;
-  }
+  const byId = await getPageById(db, id);
+  if (byId) return byId;
   return db
     .prepare('SELECT * FROM pages WHERE slug = ? AND legacy_slug = 1')
     .bind(segment)
