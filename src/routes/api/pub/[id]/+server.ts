@@ -46,7 +46,13 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
   let themeOverride: string | undefined;
 
   if (contentType.includes('application/json')) {
-    const body = await request.json();
+    const body = (await request.json()) as {
+      markdown?: string;
+      view?: string;
+      access?: string;
+      title?: string;
+      theme?: string;
+    };
     markdown = body.markdown;
     viewOverride = body.view;
     accessOverride = body.access;

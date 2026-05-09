@@ -340,7 +340,7 @@
       if (!res.ok) {
         commentError = 'Failed to post comment.';
       } else {
-        const newComment = await res.json();
+        const newComment = (await res.json()) as Comment;
         localComments = [...localComments, newComment];
         commentBody = '';
       }

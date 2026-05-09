@@ -420,7 +420,9 @@
         }),
       });
       if (res.ok) {
-        const saved = await res.json().catch(() => null);
+        const saved = (await res.json().catch(() => null)) as
+          | (Partial<Comment> & { anchor?: unknown })
+          | null;
         if (saved && typeof saved.id === 'string') {
           const anchorNorm =
             saved.anchor == null

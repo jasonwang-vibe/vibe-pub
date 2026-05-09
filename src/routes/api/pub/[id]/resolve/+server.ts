@@ -14,7 +14,10 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
   const page = await getPageById(db, params.id);
   if (!page) throw error(404, 'Page not found');
 
-  const body = await request.json();
+  const body = (await request.json()) as {
+    all?: boolean;
+    comment_ids?: string[];
+  };
 
   if (body.all) {
     await resolveAllCommentsForPage(db, params.id);

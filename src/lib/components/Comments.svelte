@@ -22,7 +22,7 @@
     });
 
     if (res.ok) {
-      const comment = await res.json();
+      const comment = (await res.json()) as Comment;
       comments = [...comments, comment];
       newComment = '';
     }

@@ -24,7 +24,13 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
   let accessOverride: 'public' | 'unlisted' | 'private' | undefined;
 
   if (contentType.includes('application/json')) {
-    const body = await request.json();
+    const body = (await request.json()) as {
+      markdown?: string;
+      slug?: string;
+      view?: typeof viewOverride;
+      theme?: string;
+      access?: typeof accessOverride;
+    };
     markdown = body.markdown ?? '';
     slugOverride = body.slug;
     viewOverride = body.view;

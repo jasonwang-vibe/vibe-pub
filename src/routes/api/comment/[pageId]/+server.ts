@@ -38,7 +38,12 @@ export const POST: RequestHandler = async ({ params, request, platform, locals }
   const page = await getPageById(db, params.pageId);
   if (!page) throw error(404, 'Page not found');
 
-  const body = await request.json();
+  const body = (await request.json()) as {
+    body?: string;
+    anchor?: CommentAnchor | string | null;
+    anchor_hint?: string;
+    display_name?: string;
+  };
   if (!body.body?.trim()) throw error(400, 'Comment body is required');
 
   // anchor may be a CommentAnchor object or legacy string

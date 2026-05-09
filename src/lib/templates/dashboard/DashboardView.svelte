@@ -65,7 +65,7 @@
         }),
       });
       if (res.ok) {
-        const saved = await res.json().catch(() => null);
+        const saved = (await res.json().catch(() => null)) as { id?: string } | null;
         comments = [
           ...comments,
           {

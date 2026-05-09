@@ -23,14 +23,15 @@ database_name = "vibe-pub"
 database_id = "<paste-id-here>"
 ```
 
-### 2. Run Migration
+### 2. Run Migrations
+
+Always apply migrations with `wrangler d1 migrations apply` so D1 records them in its `d1_migrations` table and won't replay them on the next deploy:
 
 ```bash
-for f in migrations/*.sql; do
-  echo "Applying $f"
-  npx wrangler d1 execute vibe-pub --remote --file="$f"
-done
+npx wrangler d1 migrations apply vibe-pub --remote
 ```
+
+Do **not** use `wrangler d1 execute --file=...` to apply files in `migrations/` — it bypasses the migrations tracker and will re-run on every deploy.
 
 ### 3. Create R2 Bucket
 
@@ -77,8 +78,5 @@ npm run dev -- --port 5180
 D1 runs locally via wrangler's local mode. To seed local DB:
 
 ```bash
-for f in migrations/*.sql; do
-  echo "Applying $f"
-  npx wrangler d1 execute vibe-pub --local --file="$f"
-done
+npx wrangler d1 migrations apply vibe-pub --local
 ```
