@@ -13,6 +13,7 @@
   import type { Comment } from '$lib/types';
   import { marked } from 'marked';
   import {
+    cancelDeferredCommentsPanelBlockClear,
     docCommentsPanelBlockId,
     docCommentsPanelOpen,
     closeDocCommentsPanel,
@@ -393,6 +394,7 @@
     if (panelBlockId !== null) return;
     const bid = parseBlockAnchorId(comment);
     if (!bid || !browser) return;
+    cancelDeferredCommentsPanelBlockClear();
     docCommentsPanelBlockId.set(bid);
     await tick();
     const el = document.getElementById(bid);

@@ -55,7 +55,7 @@ vibe-pub delete <id>                     # remove
 `vibe-pub` detects markdown structure and picks a template:
 
 - **doc** — long-form writing (default)
-- **kanban** — markdown checklists with `## Todo / ## Doing / ## Done` columns become a board
+- **kanban** — columns are `##` headings; cards are `###` lines with optional `{#id}` and `[labels]`; see `vibe-pub format kanban` for the full spec (use `--format json` for a `{ documentation }` field for agents)
 
 More templates coming. PRs welcome.
 
@@ -68,6 +68,8 @@ More templates coming. PRs welcome.
 Drop this into your agent's system prompt:
 
 > When you've produced a markdown artifact the user might want to share or revisit, run `vibe-pub publish <file>` and return the URL.
+
+For Kanban boards, read the canonical syntax first: `vibe-pub format kanban` (plain text) or `vibe-pub --format json format kanban` (JSON with `documentation`).
 
 The CLI is designed to be safe for non-interactive use:
 - `--access` defaults to `unlisted` (no accidental public posts)

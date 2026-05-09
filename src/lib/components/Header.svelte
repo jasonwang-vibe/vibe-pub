@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { browser } from '$app/environment';
   import {
@@ -91,6 +92,7 @@
   let copyState = $state<'idle' | 'copied'>('idle');
   let shareQrOpen = $state(false);
   let docCommentsOpen = $state(false);
+  let deletingPage = $state(false);
 
   $effect(() => docCommentsPanelOpen.subscribe((v) => (docCommentsOpen = v)));
 
@@ -151,6 +153,30 @@
       }, 1800);
     } catch {
       copyState = 'idle';
+    }
+  }
+
+  async function deletePublishedPage(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!pg?.id || !browser || deletingPage) return;
+    const ok = window.confirm(
+      'Delete this page permanently? You cannot undo this. Comments and version history will be removed.'
+    );
+    if (!ok) return;
+    moreOpen = false;
+    deletingPage = true;
+    try {
+      const res = await fetch(`/api/pub/${pg.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await goto(user ? `/@${user.username}` : '/', { replaceState: true });
+        return;
+      }
+      window.alert(`Could not delete page (${res.status}).`);
+    } catch {
+      window.alert('Network error — try again.');
+    } finally {
+      deletingPage = false;
     }
   }
 
@@ -309,6 +335,32 @@
               >
               Export as markdown
             </a>
+            {#if isPageOwner}
+              <div class="divider"></div>
+              <button
+                type="button"
+                class="mm-item mm-danger"
+                onclick={deletePublishedPage}
+                disabled={deletingPage}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                  ><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path
+                    d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                  /><line x1="10" y1="11" x2="10" y2="17" /><line
+                    x1="14"
+                    y1="11"
+                    x2="14"
+                    y2="17"
+                  /></svg
+                >
+                {deletingPage ? 'Deleting…' : 'Delete page'}
+              </button>
+            {/if}
           </div>
         </div>
 
@@ -703,6 +755,27 @@
     height: 15px;
     color: var(--text-secondary);
     flex-shrink: 0;
+  }
+
+  .mm-item.mm-danger {
+    color: var(--error, #ef4444);
+  }
+
+  .mm-item.mm-danger svg {
+    color: var(--error, #ef4444);
+  }
+
+  .mm-item.mm-danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  :global(.dark) .mm-item.mm-danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.18);
+  }
+
+  .mm-item.mm-danger:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
   }
 
   .user-btn {

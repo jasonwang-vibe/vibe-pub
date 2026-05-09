@@ -1,5 +1,8 @@
 import { get, writable } from 'svelte/store';
 
+/** Must match `.comments-panel` slide-out duration in PublishedPage.svelte */
+export const COMMENTS_PANEL_TRANSITION_MS = 240;
+
 /** When true, the global header is hidden (e.g. collection pages render their own) */
 export const hideGlobalHeader = writable(false);
 
@@ -12,9 +15,27 @@ export const docCommentsPanelBlockId = writable<string | null>(null);
 /** Non-owner: slide-in version history (Reader_Doc `.history-panel`) */
 export const readerHistoryPanelOpen = writable(false);
 
+let pendingCommentsPanelBlockClearTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Cancel delayed block-id clear (call before opening the panel or changing thread again). */
+export function cancelDeferredCommentsPanelBlockClear() {
+  if (pendingCommentsPanelBlockClearTimer !== null) {
+    clearTimeout(pendingCommentsPanelBlockClearTimer);
+    pendingCommentsPanelBlockClearTimer = null;
+  }
+}
+
+/**
+ * Close the comments rail. Clear `docCommentsPanelBlockId` only after the slide-out animation
+ * so the header/body don’t flash to the “all threads” layout while the panel is still visible.
+ */
 export function closeDocCommentsPanel() {
+  cancelDeferredCommentsPanelBlockClear();
   docCommentsPanelOpen.set(false);
-  docCommentsPanelBlockId.set(null);
+  pendingCommentsPanelBlockClearTimer = setTimeout(() => {
+    docCommentsPanelBlockId.set(null);
+    pendingCommentsPanelBlockClearTimer = null;
+  }, COMMENTS_PANEL_TRANSITION_MS);
 }
 
 export function closeReaderHistoryPanel() {
@@ -22,6 +43,7 @@ export function closeReaderHistoryPanel() {
 }
 
 export function openDocCommentsPanelAllThreads() {
+  cancelDeferredCommentsPanelBlockClear();
   readerHistoryPanelOpen.set(false);
   docCommentsPanelBlockId.set(null);
   docCommentsPanelOpen.set(true);
@@ -32,6 +54,7 @@ export function toggleDocCommentsPanelAllThreads() {
   if (get(docCommentsPanelOpen) && get(docCommentsPanelBlockId) === null) {
     closeDocCommentsPanel();
   } else {
+    cancelDeferredCommentsPanelBlockClear();
     readerHistoryPanelOpen.set(false);
     docCommentsPanelBlockId.set(null);
     docCommentsPanelOpen.set(true);
@@ -40,6 +63,8 @@ export function toggleDocCommentsPanelAllThreads() {
 
 /** Header History (non-owner): open reader history rail; closes comments. */
 export function openReaderHistoryPanel() {
-  closeDocCommentsPanel();
+  cancelDeferredCommentsPanelBlockClear();
+  docCommentsPanelOpen.set(false);
+  docCommentsPanelBlockId.set(null);
   readerHistoryPanelOpen.set(true);
 }

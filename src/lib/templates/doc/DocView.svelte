@@ -4,6 +4,7 @@
   import { browser } from '$app/environment';
   import type { Comment } from '$lib/types';
   import {
+    cancelDeferredCommentsPanelBlockClear,
     closeDocCommentsPanel,
     docCommentsPanelBlockId,
     docCommentsPanelOpen,
@@ -168,6 +169,7 @@
             closeDocCommentsPanel();
             return;
           }
+          cancelDeferredCommentsPanelBlockClear();
           docCommentsPanelBlockId.set(blockId);
           docCommentsPanelOpen.set(true);
         });
@@ -197,7 +199,33 @@
       },
     };
   }
+
+  /** Reader_Doc.html — reading progress bar */
+  let readingProgressPct = $state(0);
+
+  $effect(() => {
+    if (!browser) return;
+    function updateReadingProgress() {
+      const el = document.documentElement;
+      const scrollable = el.scrollHeight - el.clientHeight;
+      const y = window.scrollY ?? document.documentElement.scrollTop ?? 0;
+      const t = scrollable <= 0 ? 0 : Math.min(1, Math.max(0, y / scrollable));
+      readingProgressPct = t * 100;
+    }
+    updateReadingProgress();
+    window.addEventListener('scroll', updateReadingProgress, { passive: true });
+    window.addEventListener('resize', updateReadingProgress);
+    return () => {
+      window.removeEventListener('scroll', updateReadingProgress);
+      window.removeEventListener('resize', updateReadingProgress);
+    };
+  });
 </script>
+
+<!-- Reader_Doc.html — .progress / .progress-fill (pixel match) -->
+<div class="doc-reading-progress" aria-hidden="true">
+  <div class="doc-reading-progress-fill" style="width: {readingProgressPct}%"></div>
+</div>
 
 <div class="doc-wrap">
   <article class="doc-view prose dark:prose-invert max-w-[680px]" use:enhanceDoc={docEnhanceOpts}>
@@ -209,6 +237,38 @@
 </div>
 
 <style>
+  /* ── Reading progress — Reader_Doc.html (.progress / .progress-fill) ── */
+  .doc-reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+    z-index: 50;
+    pointer-events: none;
+  }
+
+  .doc-reading-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--text-primary);
+    opacity: 0.8;
+    transition: width 80ms linear;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .doc-reading-progress-fill {
+      transition: none;
+    }
+  }
+
+  @media print {
+    .doc-reading-progress {
+      display: none !important;
+    }
+  }
+
   .doc-wrap {
     position: relative;
     overflow-x: visible;

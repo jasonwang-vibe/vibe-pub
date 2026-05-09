@@ -2,6 +2,7 @@
 import { readFileSync } from 'fs';
 import * as api from '../lib/api.js';
 import { saveConfig, getToken, getBaseUrl } from '../lib/config.js';
+import { KANBAN_FORMAT_DOC } from '../lib/format-kanban.js';
 import { out, err } from '../lib/output.js';
 
 const args = process.argv.slice(2);
@@ -69,6 +70,7 @@ Usage: vibe-pub <command> [options]
 
 Commands:
   publish [file] [options]   Publish markdown (file or stdin)
+  format [name]              Print markdown format reference (e.g. kanban)
   get <slug>                 Get page details
   list, ls                   List your pages (requires auth)
   update <slug> [file]       Update a page (file or stdin)
@@ -92,6 +94,9 @@ Commands:
 Global flags:
   --format human             Human-readable output (default: json)
   --mcp                      Start MCP server
+
+Format reference:
+  vibe-pub format kanban     Full Kanban board markdown syntax for agents
 
 Publish options:
   --slug <slug>              Custom URL slug
@@ -136,6 +141,32 @@ async function main() {
   if (!cmd || cmd === '--help' || cmd === '-h' || cmd === 'help') {
     help();
     process.exit(0);
+  }
+
+  // --- format (markdown template reference for humans / AI) ---
+  if (cmd === 'format') {
+    const name = cleanArgs[1];
+    if (!name) {
+      if (format === 'human') {
+        out(
+          'Available format references:\n  kanban    Kanban board markdown\n\nRun: vibe-pub format kanban',
+          'human'
+        );
+      } else {
+        out({ formats: ['kanban'], usage: 'vibe-pub format <name>' }, format);
+      }
+      return;
+    }
+    if (name === 'kanban') {
+      if (format === 'human') {
+        out(KANBAN_FORMAT_DOC, 'human');
+      } else {
+        out({ format: 'kanban', documentation: KANBAN_FORMAT_DOC }, format);
+      }
+      return;
+    }
+    err(`Unknown format: ${name}. Available: kanban`);
+    return;
   }
 
   // --- publish ---
