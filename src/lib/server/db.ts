@@ -1,13 +1,21 @@
 import type { Page, Comment, User, PageVersionSnapshotRow } from '$lib/types';
+import { generatePageId, extractIdFromUrlSegment } from '$lib/server/slug';
 
 export function getDb(platform: App.Platform) {
   return platform.env.DB;
 }
 
+const PAGE_ID_RETRIES = 5;
+
+function isUniqueConstraintError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /UNIQUE constraint failed/i.test(msg);
+}
+
 export async function createPage(
   db: D1Database,
   data: {
-    slug: string;
+    slug?: string;
     user_id?: string;
     workspace_id?: string;
     title?: string;
@@ -18,64 +26,62 @@ export async function createPage(
     expires_at?: string;
   }
 ): Promise<Page> {
-  const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
-  await db
-    .prepare(
-      `INSERT INTO pages (id, slug, user_id, workspace_id, title, markdown, view, theme, access, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .bind(
-      id,
-      data.slug,
-      data.user_id ?? null,
-      data.workspace_id ?? null,
-      data.title ?? null,
-      data.markdown,
-      data.view,
-      data.theme ?? 'default',
-      data.access,
-      data.expires_at ?? null
-    )
-    .run();
-
-  return getPageById(db, id) as Promise<Page>;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < PAGE_ID_RETRIES; attempt++) {
+    const id = generatePageId();
+    try {
+      await db
+        .prepare(
+          `INSERT INTO pages (id, slug, user_id, workspace_id, title, markdown, view, theme, access, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(
+          id,
+          data.slug ?? '',
+          data.user_id ?? null,
+          data.workspace_id ?? null,
+          data.title ?? null,
+          data.markdown,
+          data.view,
+          data.theme ?? 'default',
+          data.access,
+          data.expires_at ?? null
+        )
+        .run();
+      return getPageById(db, id) as Promise<Page>;
+    } catch (err) {
+      lastErr = err;
+      if (!isUniqueConstraintError(err)) throw err;
+    }
+  }
+  throw new Error(
+    `Failed to insert page after ${PAGE_ID_RETRIES} id collisions: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
+  );
 }
 
 export async function getPageById(db: D1Database, id: string): Promise<Page | null> {
   return db.prepare('SELECT * FROM pages WHERE id = ?').bind(id).first<Page>();
 }
 
-/** For a slug, returns the page row’s `user_id` (may be null if unclaimed), or null if no page. */
-export async function getPageUserIdBySlug(
-  db: D1Database,
-  slug: string
-): Promise<{ user_id: string | null } | null> {
-  return db
-    .prepare('SELECT user_id FROM pages WHERE slug = ?')
-    .bind(slug)
-    .first<{ user_id: string | null }>();
-}
-
-export async function getPageBySlug(
-  db: D1Database,
-  slug: string,
-  userId?: string
-): Promise<Page | null> {
-  if (userId) {
-    return db
-      .prepare('SELECT * FROM pages WHERE slug = ? AND user_id = ?')
-      .bind(slug, userId)
-      .first<Page>();
+/** Resolve a page from a URL segment.
+ *
+ * Canonical form is `<slug>-<id>` or bare `<id>`; we extract the trailing
+ * id and look it up. As a fallback for pre-0011 dashed-slug URLs (e.g.
+ * `/funnel-audit-2026-05-06-bof`), if the id lookup misses we look up the
+ * full segment as a slug — but only against rows tagged `legacy_slug = 1`
+ * at migration time. New pages can't opt into this fallback by reusing a
+ * legacy slug, so they cannot hide an old page.
+ */
+export async function getPageByUrlSegment(db: D1Database, segment: string): Promise<Page | null> {
+  const id = extractIdFromUrlSegment(segment);
+  if (/^[A-Za-z0-9]{8}$/.test(id)) {
+    const byId = await getPageById(db, id);
+    if (byId) return byId;
   }
   return db
-    .prepare('SELECT * FROM pages WHERE slug = ? AND user_id IS NULL')
-    .bind(slug)
+    .prepare('SELECT * FROM pages WHERE slug = ? AND legacy_slug = 1')
+    .bind(segment)
     .first<Page>();
-}
-
-/** Resolve a page by slug for any owner (claimed or anonymous). Used by `/{slug}`, `.md`, `/print`, etc. */
-export async function getPageBySlugGlobal(db: D1Database, slug: string): Promise<Page | null> {
-  return db.prepare('SELECT * FROM pages WHERE slug = ?').bind(slug).first<Page>();
 }
 
 export async function getPagesByUser(db: D1Database, userId: string): Promise<Page[]> {
@@ -89,7 +95,14 @@ export async function getPagesByUser(db: D1Database, userId: string): Promise<Pa
 export async function updatePage(
   db: D1Database,
   id: string,
-  data: { markdown?: string; title?: string; view?: string; theme?: string; access?: string }
+  data: {
+    markdown?: string;
+    title?: string;
+    view?: string;
+    theme?: string;
+    access?: string;
+    slug?: string;
+  }
 ): Promise<void> {
   const sets: string[] = [];
   const values: (string | null)[] = [];
@@ -113,6 +126,10 @@ export async function updatePage(
   if (data.access !== undefined) {
     sets.push('access = ?');
     values.push(data.access);
+  }
+  if (data.slug !== undefined) {
+    sets.push('slug = ?');
+    values.push(data.slug);
   }
 
   if (sets.length === 0) return;

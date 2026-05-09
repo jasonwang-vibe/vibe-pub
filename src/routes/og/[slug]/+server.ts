@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
+import { getDb, getPageByUrlSegment } from '$lib/server/db';
 
 function escapeXml(s: string): string {
   return s
@@ -37,14 +37,11 @@ export const GET: RequestHandler = async ({ params, platform }) => {
   if (!platform) throw error(500, 'No platform');
   const db = getDb(platform);
 
-  const page = await db
-    .prepare('SELECT title, markdown, view FROM pages WHERE slug = ?')
-    .bind(params.slug)
-    .first<{ title: string | null; markdown: string; view: string }>();
+  const page = await getPageByUrlSegment(db, params.slug);
 
   if (!page) throw error(404, 'Page not found');
 
-  const title = escapeXml(truncate(page.title ?? params.slug, 60));
+  const title = escapeXml(truncate(page.title ?? page.id, 60));
   const plain = stripMarkdown(page.markdown);
   const desc = escapeXml(truncate(plain, 120));
   const viewLabel = page.view === 'kanban' ? 'kanban' : 'doc';

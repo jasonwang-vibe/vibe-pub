@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
+import { buildCanonicalPath } from '$lib/server/slug';
 import type { Page } from '$lib/types';
 
 // /llms-full.txt — concatenated raw markdown for all public pages.
@@ -13,9 +14,9 @@ export const GET: RequestHandler = async ({ platform, url }) => {
 
   const { results } = await db
     .prepare(
-      "SELECT slug, title, view, markdown, updated FROM pages WHERE access = 'public' ORDER BY updated DESC LIMIT 1000"
+      "SELECT id, slug, title, view, markdown, updated FROM pages WHERE access = 'public' ORDER BY updated DESC LIMIT 1000"
     )
-    .all<Pick<Page, 'slug' | 'title' | 'view' | 'markdown' | 'updated'>>();
+    .all<Pick<Page, 'id' | 'slug' | 'title' | 'view' | 'markdown' | 'updated'>>();
 
   const origin = url.origin;
   const parts: string[] = [];
@@ -23,11 +24,12 @@ export const GET: RequestHandler = async ({ platform, url }) => {
   parts.push(`Generated: ${new Date().toISOString()}\n`);
 
   for (const p of results) {
-    const title = p.title?.trim() || p.slug;
+    const title = p.title?.trim() || p.id;
+    const path = buildCanonicalPath(p);
     parts.push('\n---\n');
     parts.push(`# ${title}\n`);
-    parts.push(`URL: ${origin}/${p.slug}`);
-    parts.push(`Source: ${origin}/${p.slug}.md`);
+    parts.push(`URL: ${origin}${path}`);
+    parts.push(`Source: ${origin}${path}.md`);
     if (p.view && p.view !== 'doc') parts.push(`View: ${p.view}`);
     parts.push(`Updated: ${p.updated}`);
     parts.push('');

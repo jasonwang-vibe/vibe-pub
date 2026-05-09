@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, getPageById } from '$lib/server/db';
+import { buildCanonicalPath } from '$lib/server/slug';
 
 export const POST: RequestHandler = async ({ params, locals, platform }) => {
   if (!platform) throw error(500, 'No platform');
@@ -19,5 +20,5 @@ export const POST: RequestHandler = async ({ params, locals, platform }) => {
     .bind(locals.user.id, params.id)
     .run();
 
-  return json({ claimed: true, slug: page.slug });
+  return json({ claimed: true, url: buildCanonicalPath(page) });
 };

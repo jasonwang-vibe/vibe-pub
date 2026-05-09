@@ -294,7 +294,7 @@
           {#each filteredPages as page}
             {@const cc = commentCounts?.[page.id]}
             {@const isAgent = isAgentPublished(page)}
-            <a href={`/@${profileUser.username}/${page.slug}`} class="page-row">
+            <a href={page.canonicalPath} class="page-row">
               <span
                 class="src"
                 class:agent={isAgent}
@@ -303,10 +303,9 @@
                 {isAgent ? '\u2726' : '\u25C7'}
               </span>
               <div class="title-col">
-                <h4>{page.title || page.slug}</h4>
+                <h4>{page.title || page.id}</h4>
                 <span class="slug"
-                  >vibe.pub/@{profileUser.username}/{page.slug}<span class="open">&nearr;</span
-                  ></span
+                  >vibe.pub{page.canonicalPath}<span class="open">&nearr;</span></span
                 >
               </div>
               <span class="meta-col">{relativeTime(page.updated)}</span>
@@ -379,13 +378,13 @@
             bg: 'var(--surface-hover)',
             color: 'var(--text-secondary)',
           }}
-          <a href={`/@${profileUser.username}/${page.slug}`} class="pub-card">
+          <a href={page.canonicalPath} class="pub-card">
             <div class="pub-card-top">
-              <span class="pub-card-title">{page.title || page.slug}</span>
+              <span class="pub-card-title">{page.title || page.id}</span>
               <span class="badge" style="background: {vs.bg}; color: {vs.color};">{page.view}</span>
             </div>
             <div class="pub-card-bottom">
-              <span class="pub-card-slug">{page.slug}</span>
+              <span class="pub-card-slug">{page.canonicalPath}</span>
               <span class="pub-card-date">{formatDate(page.updated)}</span>
             </div>
           </a>

@@ -17,3 +17,5 @@ dist
 
 # personal project mgmt (used in monorepo workflow)
 .pm/
+
+/test-results

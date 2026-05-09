@@ -15,7 +15,14 @@
   let { user = null }: Props = $props();
 
   type PageData = {
-    page?: { slug: string; user_id: string | null; view?: string | null; title?: string | null };
+    page?: {
+      id: string;
+      slug: string;
+      user_id: string | null;
+      view?: string | null;
+      title?: string | null;
+    };
+    canonicalPath?: string;
     comments?: unknown[];
     isOwner?: boolean;
   };
@@ -23,35 +30,37 @@
   let pathname = $derived($page.url.pathname);
   let pdata = $derived($page.data as PageData | undefined);
   let pg = $derived(pdata?.page);
+  let canonicalPath = $derived(pdata?.canonicalPath ?? '');
   let commentCount = $derived(Array.isArray(pdata?.comments) ? pdata!.comments!.length : 0);
 
-  /** Published doc at `/slug` or workspace link `/@user/slug` (same header as canonical page). */
+  /** Published doc at `/<slug>-<id>` (single segment path). */
   let isArticlePage = $derived(
     !/^\/(new|auth)(\/|$)/i.test(pathname) &&
       !pathname.endsWith('.md') &&
-      (/^\/[^/@][^/]*$/.test(pathname) || /^\/@[^/]+\/[^/]+$/.test(pathname))
+      /^\/[^/@][^/]*$/.test(pathname)
   );
 
   let crumb = $derived(
-    pg?.slug && pathname.startsWith('/@')
-      ? `${$page.url.hostname}/${pg.slug}`
+    canonicalPath
+      ? `${$page.url.hostname}${canonicalPath}`
       : `${$page.url.hostname}${$page.url.pathname === '/' ? '' : $page.url.pathname}`
   );
 
-  let historyHref = $derived(pg?.slug ? `/${pg.slug}/history` : `${pathname}/history`);
+  let historyHref = $derived(canonicalPath ? `${canonicalPath}/history` : `${pathname}/history`);
 
   let shareUrl = $derived(
     browser
-      ? pg?.slug
-        ? pathname.startsWith('/@')
-          ? `${$page.url.origin}${pathname.split(/[?#]/)[0]}`
-          : `${$page.url.origin}/${pg.slug}`
+      ? canonicalPath
+        ? `${$page.url.origin}${canonicalPath}`
         : `${$page.url.origin}${$page.url.pathname === '/' ? '' : $page.url.pathname}`
       : ''
   );
 
-  let markdownExportHref = $derived(pg?.slug ? `/${pg.slug}.md` : '');
-  let printExportHref = $derived(pg?.slug ? `/${pg.slug}/print` : '');
+  let markdownExportHref = $derived(canonicalPath ? `${canonicalPath}.md` : '');
+  let printExportHref = $derived(canonicalPath ? `${canonicalPath}/print` : '');
+  let markdownDownloadName = $derived(
+    pg ? `${(pg.slug && pg.slug.length ? pg.slug : pg.id) || 'page'}.md` : 'page.md'
+  );
 
   let shareSnippet = $derived.by(() => {
     const t = pdata?.page?.title?.trim();
@@ -266,7 +275,7 @@
             {/if}
             <div class="divider"></div>
             <a
-              href="/{pg.slug}.md"
+              href={markdownExportHref}
               target="_blank"
               rel="noopener noreferrer"
               class="mm-item"
@@ -283,8 +292,8 @@
               View source
             </a>
             <a
-              href="/{pg.slug}.md"
-              download="{pg.slug}.md"
+              href={markdownExportHref}
+              download={markdownDownloadName}
               class="mm-item"
               onclick={() => (moreOpen = false)}
             >
@@ -431,7 +440,7 @@
         >
         QR code
       </button>
-      <a class="share-action" href={markdownExportHref} download={pg ? `${pg.slug}.md` : 'page.md'}>
+      <a class="share-action" href={markdownExportHref} download={markdownDownloadName}>
         <span class="share-action-icon" aria-hidden="true"
           ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path

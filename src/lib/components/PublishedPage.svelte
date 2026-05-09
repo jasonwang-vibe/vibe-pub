@@ -26,7 +26,8 @@
   }
   let { data }: Props = $props();
 
-  let { page, html, seoHtml, blocks, comments, frontmatter, isOwner, canClaim } = $derived(data);
+  let { page, canonicalPath, html, seoHtml, blocks, comments, frontmatter, isOwner, canClaim } =
+    $derived(data);
 
   type VersionRow = {
     version: number;
@@ -628,7 +629,7 @@
     return 'A page on vibe.pub';
   });
 
-  let pageTitle = $derived(page.title ?? page.slug);
+  let pageTitle = $derived(page.title ?? page.id);
   let docHeroTitle = $derived.by(() => {
     if (
       !isOwner &&
@@ -749,17 +750,17 @@
   <meta property="og:type" content="article" />
   <meta property="og:url" content={pageUrl} />
   <meta property="og:site_name" content="vibe.pub" />
-  <meta property="og:image" content={`${$pageStore.url.origin}/og/${page.slug}`} />
+  <meta property="og:image" content={`${$pageStore.url.origin}/og${canonicalPath}`} />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={pageTitle} />
   <meta name="twitter:description" content={description} />
-  <meta name="twitter:image" content={`${$pageStore.url.origin}/og/${page.slug}`} />
+  <meta name="twitter:image" content={`${$pageStore.url.origin}/og${canonicalPath}`} />
   <link
     rel="alternate"
     type="text/markdown"
-    href={`${$pageStore.url.origin}/${page.slug}.md`}
+    href={`${$pageStore.url.origin}${canonicalPath}.md`}
     title="Markdown source"
   />
 </svelte:head>
@@ -784,7 +785,7 @@
       </div>
       <hr />
       <p>
-        Source markdown: <a href={`/${page.slug}.md`}>/{page.slug}.md</a>
+        Source markdown: <a href={`${canonicalPath}.md`}>{canonicalPath}.md</a>
       </p>
     </article>
   </main>

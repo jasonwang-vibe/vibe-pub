@@ -1,7 +1,8 @@
 // src/routes/[slug]/+page.server.ts
-import { error, isHttpError } from '@sveltejs/kit';
+import { error, isHttpError, redirect, isRedirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getDb, getCommentsByPage, getPageBySlugGlobal } from '$lib/server/db';
+import { getDb, getCommentsByPage, getPageByUrlSegment } from '$lib/server/db';
+import { buildCanonicalPath } from '$lib/server/slug';
 import { renderMarkdown, parseFrontmatter } from '$lib/server/markdown';
 import { parseBlocks } from '$lib/templates';
 import { parseKanbanBlocks } from '$lib/templates/kanban/parser';
@@ -10,14 +11,19 @@ import { parseTimelineBlocks } from '$lib/templates/timeline/parser';
 import { parseSlidesBlocks } from '$lib/templates/slides/parser';
 import { parseDashboardBlocks } from '$lib/templates/dashboard/parser';
 
-export const load: PageServerLoad = async ({ params, platform, locals }) => {
+export const load: PageServerLoad = async ({ params, platform, locals, url }) => {
   if (!platform) throw error(500, 'No platform');
 
   try {
     const db = getDb(platform);
 
-    const page = await getPageBySlugGlobal(db, params.slug);
+    const page = await getPageByUrlSegment(db, params.slug);
     if (!page) throw error(404, 'Page not found');
+
+    const canonicalPath = buildCanonicalPath(page);
+    if (url.pathname !== canonicalPath) {
+      throw redirect(301, canonicalPath + url.search);
+    }
 
     if (page.access === 'private') {
       if (!page.user_id || locals.user?.id !== page.user_id) {
@@ -129,6 +135,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 
     return {
       page,
+      canonicalPath,
       html,
       seoHtml,
       blocks,
@@ -144,7 +151,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
       canClaim,
     };
   } catch (e: unknown) {
-    if (isHttpError(e)) throw e;
+    if (isHttpError(e) || isRedirect(e)) throw e;
     console.error('Page load error:', e);
     throw error(500, `Failed to load page: ${e instanceof Error ? e.message : String(e)}`);
   }

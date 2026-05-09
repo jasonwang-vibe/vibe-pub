@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb, createPage } from '$lib/server/db';
-import { generateSlug } from '$lib/server/slug';
+import { buildCanonicalPath } from '$lib/server/slug';
 import { parseFrontmatter } from '$lib/server/markdown';
 import { detectView } from '$lib/templates/detect';
 
@@ -23,7 +23,6 @@ export const actions: Actions = {
 
     const { data: fm, content } = parseFrontmatter(markdown);
 
-    const slug = generateSlug();
     const view = (fm.view as 'doc' | 'kanban' | 'changelog') ?? detectView(markdown);
     const theme = fm.theme ?? 'default';
     const access = fm.access ?? 'unlisted';
@@ -36,7 +35,6 @@ export const actions: Actions = {
     }
 
     const page = await createPage(db, {
-      slug,
       user_id: locals.user?.id,
       title,
       markdown,
@@ -46,9 +44,10 @@ export const actions: Actions = {
       expires_at: fm.expires ?? undefined,
     });
 
+    const canonicalPath = buildCanonicalPath(page);
     const baseUrl = platform.env.BASE_URL ?? 'https://vibe.pub';
-    const url = `${baseUrl}/${page.slug}`;
+    const url = `${baseUrl}${canonicalPath}`;
 
-    return { url, slug: page.slug };
+    return { url, canonicalPath };
   },
 };

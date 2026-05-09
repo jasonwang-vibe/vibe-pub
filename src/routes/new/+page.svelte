@@ -5,7 +5,7 @@
   import { detectView } from '$lib/templates/detect';
 
   interface Props {
-    form: { url?: string; slug?: string; error?: string } | null;
+    form: { url?: string; canonicalPath?: string; error?: string } | null;
   }
   let { form }: Props = $props();
 
@@ -115,7 +115,7 @@
             </button>
           </div>
           <div class="modal-actions">
-            <a href={`/${form.slug}`} class="btn primary">View page</a>
+            <a href={form.canonicalPath ?? '/'} class="btn primary">View page</a>
             {#if user}
               <a href={`/@${user.username}`} class="btn">My workspace</a>
             {:else}

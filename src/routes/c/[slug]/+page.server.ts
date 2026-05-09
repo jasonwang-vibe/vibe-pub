@@ -18,6 +18,7 @@ interface CollectionPageRow {
   page_id: string;
   sort_order: number;
   label: string | null;
+  id: string;
   slug: string;
   title: string | null;
   markdown: string;
@@ -47,7 +48,7 @@ export const load: PageServerLoad = async ({ params, url, platform, depends }) =
   const pagesResult = await db
     .prepare(
       `
-      SELECT cp.page_id, cp.sort_order, cp.label, p.slug, p.title, p.markdown, p.view
+      SELECT cp.page_id, cp.sort_order, cp.label, p.id, p.slug, p.title, p.markdown, p.view
       FROM collection_pages cp
       JOIN pages p ON cp.page_id = p.id
       WHERE cp.collection_id = ?
@@ -74,9 +75,10 @@ export const load: PageServerLoad = async ({ params, url, platform, depends }) =
     };
   }
 
-  // Determine active page (from ?page= query param, or first page)
-  const activeSlug = url.searchParams.get('page') ?? pages[0].slug;
-  const activePage = pages.find((p) => p.slug === activeSlug) ?? pages[0];
+  // Determine active page (from ?page= query param, or first page).
+  // The query param accepts the page id (matches what serialize/links emit).
+  const activeKey = url.searchParams.get('page') ?? pages[0].id;
+  const activePage = pages.find((p) => p.id === activeKey) ?? pages[0];
 
   // Render active page content
   const { content, data: fm } = parseFrontmatter(activePage.markdown);
@@ -112,7 +114,7 @@ export const load: PageServerLoad = async ({ params, url, platform, depends }) =
           .replace(/(^-|-$)/g, ''),
       });
     }
-    return { slug: p.slug, title: p.label ?? p.title ?? p.slug, headings };
+    return { id: p.id, title: p.label ?? p.title ?? p.id, headings };
   });
 
   return {
@@ -123,10 +125,10 @@ export const load: PageServerLoad = async ({ params, url, platform, depends }) =
       theme: collection.theme,
     },
     pages: pages.map((p) => ({
-      slug: p.slug,
-      title: p.label ?? p.title ?? p.slug,
+      id: p.id,
+      title: p.label ?? p.title ?? p.id,
       view: p.view,
-      active: p.slug === activePage.slug,
+      active: p.id === activePage.id,
     })),
     activePage: {
       id: activePage.page_id,

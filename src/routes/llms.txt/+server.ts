@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
+import { buildCanonicalPath } from '$lib/server/slug';
 import type { Page } from '$lib/types';
 
 // /llms.txt — index of public pages for LLM agents.
@@ -14,9 +15,9 @@ export const GET: RequestHandler = async ({ platform, url }) => {
 
   const { results } = await db
     .prepare(
-      "SELECT slug, title, view FROM pages WHERE access = 'public' ORDER BY updated DESC LIMIT 1000"
+      "SELECT id, slug, title, view FROM pages WHERE access = 'public' ORDER BY updated DESC LIMIT 1000"
     )
-    .all<Pick<Page, 'slug' | 'title' | 'view'>>();
+    .all<Pick<Page, 'id' | 'slug' | 'title' | 'view'>>();
 
   const origin = url.origin;
   const lines: string[] = [];
@@ -30,9 +31,10 @@ export const GET: RequestHandler = async ({ platform, url }) => {
   lines.push('');
 
   for (const p of results) {
-    const title = p.title?.trim() || p.slug;
+    const title = p.title?.trim() || p.id;
     const tag = p.view && p.view !== 'doc' ? ` [${p.view}]` : '';
-    lines.push(`- [${title}](${origin}/${p.slug})${tag} — markdown: ${origin}/${p.slug}.md`);
+    const path = buildCanonicalPath(p);
+    lines.push(`- [${title}](${origin}${path})${tag} — markdown: ${origin}${path}.md`);
   }
 
   lines.push('');

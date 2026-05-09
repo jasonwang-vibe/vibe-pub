@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getUserByUsername, getPagesByUser } from '$lib/server/db';
+import { buildCanonicalPath } from '$lib/server/slug';
 
 export const load: PageServerLoad = async ({ params, platform, locals }) => {
   if (!platform) throw error(500, 'Platform not available');
@@ -48,9 +49,14 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
     }
   }
 
+  const pagesWithPath = visiblePages.map((p) => ({
+    ...p,
+    canonicalPath: buildCanonicalPath(p),
+  }));
+
   return {
     profileUser: { username: user.username },
-    pages: visiblePages,
+    pages: pagesWithPath,
     collections,
     isOwner,
     commentCounts,

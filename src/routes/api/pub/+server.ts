@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, createPage, getPagesByUser, appendPageVersionSnapshot } from '$lib/server/db';
-import { generateSlug, isValidSlug } from '$lib/server/slug';
+import { isValidSlug, buildCanonicalPath } from '$lib/server/slug';
 import { parseFrontmatter } from '$lib/server/markdown';
 import { detectView } from '$lib/templates/detect';
 
@@ -41,13 +41,11 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
   const { data: fm, content } = parseFrontmatter(markdown);
 
-  // Determine slug
-  let slug: string;
+  // Custom slug is now optional/cosmetic; empty when not provided.
+  let slug = '';
   if (slugOverride) {
     if (!isValidSlug(slugOverride)) throw error(400, 'Invalid slug format');
     slug = slugOverride;
-  } else {
-    slug = generateSlug();
   }
 
   const view = viewOverride ?? fm.view ?? detectView(markdown);
@@ -84,7 +82,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
   }
 
   const baseUrl = platform.env.BASE_URL ?? 'https://vibe.pub';
-  const url = `${baseUrl}/${page.slug}`;
+  const url = `${baseUrl}${buildCanonicalPath(page)}`;
 
   return json({ id: page.id, slug: page.slug, url }, { status: 201 });
 };
@@ -106,7 +104,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
       access: p.access,
       created: p.created,
       updated: p.updated,
-      url: `${baseUrl}/${p.slug}`,
+      url: `${baseUrl}${buildCanonicalPath(p)}`,
     }))
   );
 };

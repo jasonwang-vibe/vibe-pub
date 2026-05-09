@@ -27,7 +27,7 @@
 <div class="print-page">
   <!-- Print toolbar (hidden when printing) -->
   <div class="print-toolbar no-print">
-    <a href="/{data.slug}" class="back-link">
+    <a href={data.canonicalPath} class="back-link">
       <svg
         width="16"
         height="16"
@@ -72,7 +72,7 @@
       {@html data.html}
     </div>
     <footer class="print-footer">
-      <span>vibe.pub/{data.slug}</span>
+      <span>vibe.pub{data.canonicalPath}</span>
     </footer>
   </article>
 </div>

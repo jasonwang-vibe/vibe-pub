@@ -1,18 +1,24 @@
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, getPageBySlugGlobal } from '$lib/server/db';
+import { getDb, getPageByUrlSegment } from '$lib/server/db';
+import { buildCanonicalPath } from '$lib/server/slug';
 
-// Raw markdown endpoint: GET /<slug>.md returns the page's source markdown
+// Raw markdown endpoint: GET /<slug>-<id>.md returns the page's source markdown
 // as text/markdown. For LLM agents and any tool that wants the source of
 // truth without parsing HTML.
-export const GET: RequestHandler = async ({ params, platform }) => {
+export const GET: RequestHandler = async ({ params, platform, url }) => {
   if (!platform) throw error(500, 'No platform');
   const db = getDb(platform);
 
-  const page = await getPageBySlugGlobal(db, params.slug);
+  const page = await getPageByUrlSegment(db, params.slug);
 
   if (!page) throw error(404, 'Page not found');
   if (page.access === 'private') throw error(403, 'This page is private');
+
+  const canonicalPath = buildCanonicalPath(page) + '.md';
+  if (url.pathname !== canonicalPath) {
+    throw redirect(301, canonicalPath + url.search);
+  }
 
   return new Response(page.markdown, {
     headers: {

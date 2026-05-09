@@ -141,7 +141,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${data.page.slug}.v${selected.version}.md`;
+    a.download = `${data.page.slug || data.page.id}.v${selected.version}.md`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -159,7 +159,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ markdown: selected.markdown }),
       });
-      if (res.ok) window.location.href = `/${data.page.slug}`;
+      if (res.ok) window.location.href = data.canonicalPath;
     } finally {
       restoring = false;
     }
@@ -167,27 +167,26 @@
 </script>
 
 <svelte:head>
-  <title>History — {data.page.title ?? data.page.slug}</title>
+  <title>History — {data.page.title ?? data.page.id}</title>
 </svelte:head>
 
 <div class="top">
   <div class="top-l">
     <a href="/" class="wordmark">vibe.<em>pub</em></a>
     <div class="crumbs">
-      <span>/</span><a href={`/${data.page.slug}`}>{data.page.slug}</a><span>/</span><span
-        >history</span
-      >
+      <span>/</span><a href={data.canonicalPath}>{data.page.title ?? data.page.id}</a><span>/</span
+      ><span>history</span>
     </div>
   </div>
-  <div class="top-r"><a class="top-btn" href={`/${data.page.slug}`}>← back to page</a></div>
+  <div class="top-r"><a class="top-btn" href={data.canonicalPath}>← back to page</a></div>
 </div>
 
 <div class="shell">
   <aside class="vrail">
     <div class="vrail-h">
       <div class="kicker">Version history</div>
-      <div class="page-title">{data.page.title ?? data.page.slug}</div>
-      <div class="slug">vibe.pub/{data.page.slug}</div>
+      <div class="page-title">{data.page.title ?? data.page.id}</div>
+      <div class="slug">vibe.pub{data.canonicalPath}</div>
     </div>
     <div class="vfilter">
       <button class:on={filter === 'all'} onclick={() => (filter = 'all')}>All</button>
@@ -221,7 +220,7 @@
               <div class="vitem-who">
                 @{authorLabel} · {v.tag === 'manual' ? 'manual save' : v.tag}
               </div>
-              <div class="vitem-note">{v.title ?? data.page.title ?? data.page.slug}</div>
+              <div class="vitem-note">{v.title ?? data.page.title ?? data.page.id}</div>
               <div class="vitem-delta">
                 <span class="add">+ {delta.add}</span><span class="rem">- {delta.rem}</span>
               </div>

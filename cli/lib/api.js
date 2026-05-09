@@ -47,8 +47,19 @@ export async function list() {
   return request('GET', '/api/pub');
 }
 
-export async function getBySlug(slug) {
-  return request('GET', `/api/pub/by-slug/${encodeURIComponent(slug)}`);
+// Accepts a bare page id, a `slug-id` URL fragment, or a legacy slug.
+// The server extracts the trailing id from the segment.
+export async function getBySlug(segment) {
+  return request('GET', `/api/pub/by-slug/${encodeURIComponent(segment)}`);
+}
+
+// Convenience: pass a full URL or a path; we strip to the page segment.
+export async function getByUrl(input) {
+  const segment = String(input)
+    .replace(/^https?:\/\/[^/]+\//, '')
+    .replace(/^\/+/, '')
+    .split(/[?#]/)[0];
+  return getBySlug(segment);
 }
 
 export async function getById(id) {

@@ -24,6 +24,11 @@ export type PageTheme =
 export interface Page {
   id: string;
   slug: string;
+  /** 1 iff this row was tagged at migration 0011 as having a pre-refactor
+   * dashed slug. Only these rows participate in legacy `/<slug>` URL
+   * resolution; new pages always have 0 here, so they cannot shadow a
+   * legacy URL by reusing the same slug. */
+  legacy_slug: number;
   user_id: string | null;
   workspace_id: string | null;
   title: string | null;
@@ -71,9 +76,11 @@ export interface PageFrontmatter {
   expires?: string;
 }
 
-/** Payload from /[slug] and /@user/[slug] +page.server load — shared by PublishedPage.svelte */
+/** Payload from /[slug] +page.server load — shared by PublishedPage.svelte */
 export interface PublishedPageData {
   page: Page;
+  /** Server-built canonical URL path for this page (`/<slug>-<id>` or `/<id>`). */
+  canonicalPath: string;
   html: string;
   seoHtml: string;
   blocks: Block[];

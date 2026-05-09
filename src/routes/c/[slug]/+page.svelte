@@ -14,7 +14,7 @@
   let activeTitle = $derived(data.pages.find((p) => p.active)?.title ?? '');
   let currentHeadings = $derived(
     data.allHeadings
-      ?.find((p) => p.slug === data.activePage?.slug)
+      ?.find((p) => p.id === data.activePage?.id)
       ?.headings?.filter((h) => h.level <= 3) ?? []
   );
 
@@ -114,7 +114,7 @@
                     class:active={page.active}
                     onclick={() => {
                       showDropdown = false;
-                      window.location.href = `/c/${data.collection.slug}?page=${page.slug}`;
+                      window.location.href = `/c/${data.collection.slug}?page=${page.id}`;
                     }}>{page.title}</button
                   >
                 {/each}

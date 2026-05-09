@@ -41,7 +41,7 @@ export async function startMcp() {
     'get_page',
     'Get a page by its slug. Returns full page details including markdown content.',
     {
-      slug: z.string().describe('Page slug'),
+      slug: z.string().describe('Page id, or `slug-id` URL fragment'),
     },
     async ({ slug }) => {
       const page = await api.getBySlug(slug);
@@ -54,7 +54,7 @@ export async function startMcp() {
     'update_page',
     'Update a page identified by slug. Automatically creates a version snapshot before updating.',
     {
-      slug: z.string().describe('Page slug'),
+      slug: z.string().describe('Page id, or `slug-id` URL fragment'),
       markdown: z.string().describe('New markdown content'),
     },
     async ({ slug, markdown }) => {
@@ -69,7 +69,7 @@ export async function startMcp() {
     'delete_page',
     'Delete a page identified by slug.',
     {
-      slug: z.string().describe('Page slug'),
+      slug: z.string().describe('Page id, or `slug-id` URL fragment'),
     },
     async ({ slug }) => {
       const page = await resolveSlug(slug);
@@ -97,7 +97,7 @@ export async function startMcp() {
     'get_comments',
     'List comments for a page by slug. By default only unresolved (open) comments; set include_resolved to include resolved threads.',
     {
-      slug: z.string().describe('Page slug'),
+      slug: z.string().describe('Page id, or `slug-id` URL fragment'),
       include_resolved: z
         .boolean()
         .optional()
@@ -115,7 +115,7 @@ export async function startMcp() {
     'add_comment',
     'Add a comment to a page identified by slug.',
     {
-      slug: z.string().describe('Page slug'),
+      slug: z.string().describe('Page id, or `slug-id` URL fragment'),
       body: z.string().describe('Comment body text'),
       anchor: z.string().optional().describe('Block ID to anchor the comment to'),
     },
@@ -131,7 +131,7 @@ export async function startMcp() {
     'resolve_comments',
     'Resolve comments on a page. Either resolve all comments or specific ones by ID.',
     {
-      slug: z.string().describe('Page slug'),
+      slug: z.string().describe('Page id, or `slug-id` URL fragment'),
       all: z.boolean().optional().describe('Resolve all comments'),
       comment_ids: z.array(z.string()).optional().describe('Specific comment IDs to resolve'),
     },
@@ -147,7 +147,7 @@ export async function startMcp() {
     'get_versions',
     'List version history for a page identified by slug.',
     {
-      slug: z.string().describe('Page slug'),
+      slug: z.string().describe('Page id, or `slug-id` URL fragment'),
     },
     async ({ slug }) => {
       const page = await resolveSlug(slug);
@@ -161,7 +161,7 @@ export async function startMcp() {
     'get_version',
     'Get a specific version of a page by slug and version number.',
     {
-      slug: z.string().describe('Page slug'),
+      slug: z.string().describe('Page id, or `slug-id` URL fragment'),
       version: z.number().describe('Version number'),
     },
     async ({ slug, version }) => {
