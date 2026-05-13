@@ -595,28 +595,6 @@
     font-weight: 700;
   }
 
-  article.doc-view :global(blockquote) {
-    margin: 24px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.65em;
-    padding: 14px 16px 14px 24px;
-    border-left: 2px solid var(--text-primary);
-    font-style: italic;
-    color: var(--text-secondary);
-    font-family: var(--font-serif);
-    quotes: none;
-  }
-
-  article.doc-view :global(blockquote::before),
-  article.doc-view :global(blockquote::after) {
-    content: none;
-  }
-
-  article.doc-view :global(blockquote > *) {
-    margin: 0;
-  }
-
   article.doc-view :global(:not(pre) > code) {
     font-family: var(--font-mono);
     font-size: 0.88em;

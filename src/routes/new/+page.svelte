@@ -455,16 +455,6 @@
     color: var(--text-primary);
     font-weight: 700;
   }
-  .preview-html :global(blockquote) {
-    border-left: 2px solid var(--text-primary);
-    padding-left: 20px;
-    margin: 20px 0;
-    font-family: var(--font-serif);
-    font-style: italic;
-    color: var(--text-secondary);
-    font-size: 17px;
-    line-height: 1.5;
-  }
   .preview-html :global(pre) {
     background: var(--text-primary);
     color: var(--bg);

@@ -7,6 +7,20 @@ export function getDb(platform: App.Platform) {
 
 const PAGE_ID_RETRIES = 5;
 
+/**
+ * Every path that returns a full {@link Page} must include `agent_published`
+ * (`SELECT * FROM pages`, or an explicit column list that names `agent_published`).
+ * `@[user]` and `/api/pub` GET rely on this for the agent-published filter.
+ */
+function normalizePageRow(row: Page | null): Page | null {
+  if (!row) return null;
+  return { ...row, agent_published: row.agent_published === 1 ? 1 : 0 };
+}
+
+function normalizePages(rows: Page[]): Page[] {
+  return rows.map((r) => ({ ...r, agent_published: r.agent_published === 1 ? 1 : 0 }));
+}
+
 function isUniqueConstraintError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return /UNIQUE constraint failed/i.test(msg);
@@ -24,16 +38,19 @@ export async function createPage(
     theme?: string;
     access: string;
     expires_at?: string;
+    /** When true, page is tagged for profile "Agent-published" filter */
+    agent_published?: boolean;
   }
 ): Promise<Page> {
   let lastErr: unknown;
   for (let attempt = 0; attempt < PAGE_ID_RETRIES; attempt++) {
     const id = generatePageId();
     try {
+      const agentPublished = data.agent_published === true ? 1 : 0;
       await db
         .prepare(
-          `INSERT INTO pages (id, slug, user_id, workspace_id, title, markdown, view, theme, access, expires_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO pages (id, slug, user_id, workspace_id, title, markdown, view, theme, access, expires_at, agent_published)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(
           id,
@@ -45,7 +62,8 @@ export async function createPage(
           data.view,
           data.theme ?? 'default',
           data.access,
-          data.expires_at ?? null
+          data.expires_at ?? null,
+          agentPublished
         )
         .run();
       return getPageById(db, id) as Promise<Page>;
@@ -60,7 +78,8 @@ export async function createPage(
 }
 
 export async function getPageById(db: D1Database, id: string): Promise<Page | null> {
-  return db.prepare('SELECT * FROM pages WHERE id = ?').bind(id).first<Page>();
+  const row = await db.prepare('SELECT * FROM pages WHERE id = ?').bind(id).first<Page>();
+  return normalizePageRow(row);
 }
 
 /** Resolve a page from a URL segment.
@@ -76,10 +95,11 @@ export async function getPageByUrlSegment(db: D1Database, segment: string): Prom
   const id = extractIdFromUrlSegment(segment);
   const byId = await getPageById(db, id);
   if (byId) return byId;
-  return db
+  const legacy = await db
     .prepare('SELECT * FROM pages WHERE slug = ? AND legacy_slug = 1')
     .bind(segment)
     .first<Page>();
+  return normalizePageRow(legacy);
 }
 
 export async function getPagesByUser(db: D1Database, userId: string): Promise<Page[]> {
@@ -87,7 +107,7 @@ export async function getPagesByUser(db: D1Database, userId: string): Promise<Pa
     .prepare('SELECT * FROM pages WHERE user_id = ? ORDER BY updated DESC')
     .bind(userId)
     .all<Page>();
-  return result.results;
+  return normalizePages(result.results);
 }
 
 export async function updatePage(
@@ -216,6 +236,7 @@ export async function createComment(
     body: string;
     anchor?: unknown;
     anchor_hint?: string;
+    agent_published?: boolean;
   }
 ): Promise<Comment> {
   const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
@@ -226,10 +247,11 @@ export async function createComment(
       : typeof data.anchor === 'string'
         ? data.anchor
         : JSON.stringify(data.anchor);
+  const agentPublished = data.agent_published === true ? 1 : 0;
   await db
     .prepare(
-      `INSERT INTO comments (id, page_id, user_id, display_name, body, anchor, anchor_hint)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO comments (id, page_id, user_id, display_name, body, anchor, anchor_hint, agent_published)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       id,
@@ -238,7 +260,8 @@ export async function createComment(
       data.display_name ?? null,
       data.body,
       anchorStr,
-      data.anchor_hint ?? null
+      data.anchor_hint ?? null,
+      agentPublished
     )
     .run();
 
