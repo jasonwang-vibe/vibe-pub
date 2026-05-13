@@ -36,26 +36,38 @@ export async function geminiSuggestBlockRevise(
   const commentsJson = JSON.stringify(commentsChrono);
   const docCtx = (docPlainText || blockPlainText).trim();
 
-  const prompt = `You are a precise document editor.
+  const prompt = `You are a precise document editor working on markdown stored as plain text (headings like # / ## still appear as lines).
 
-FULL_DOCUMENT (plain text of the entire document for context: terminology, structure, cross-references, tone. It may be truncated at the end if very long. Use it only to inform your suggestions — do not invent edits for parts of the document outside BLOCK_TARGET):
+FULL_DOCUMENT — full page text for structure and context (tone, terminology, cross-references). It may be truncated. Use it to locate sections; do not invent edits outside the EDIT_SCOPE defined below.
 ---
 ${docCtx}
 ---
 
-BLOCK_TARGET (plain text of the single block that readers are commenting on; keep the dominant language when proposing edits):
+BLOCK_TARGET — plain text of the single DOM block readers commented on (often one paragraph, a heading line, or a small chunk). Comments refer to this focus. Keep the dominant language of the document when proposing edits.
 ---
 ${blockPlainText}
 ---
 
-COMMENTS_JSON (oldest first; each entry has author, body, created ISO time, and whether it is already marked resolved):
+COMMENTS_JSON (oldest first; author, body, created ISO time, resolved flag):
 ${commentsJson}
 
-Instructions:
+## Infer EDIT_SCOPE from FULL_DOCUMENT + BLOCK_TARGET (no other inputs)
+
+Markdown sections are separated by headings. Heading level = count of leading \`#\` on a line (e.g. \`##\` = level 2). A **subsection** under a heading runs from that heading’s line down to (but not including) the next line that starts with a heading of **level ≤** that heading’s level (same or “higher” in the outline).
+
+1. **Comment on a heading** — If BLOCK_TARGET is essentially one markdown heading line (or the visible title of one heading), treat the anchor as being **on that heading**. Then **EDIT_SCOPE** = that heading line **plus** every following line until the next heading line whose level is ≤ the level of that heading (the whole subsection **including** the heading line).
+
+2. **Comment on body text** — If BLOCK_TARGET is normal body (paragraph, list, code, etc.), find the **owning heading**: the nearest heading line **above** the place in FULL_DOCUMENT that corresponds to BLOCK_TARGET (same order as rendered reading order). Then **EDIT_SCOPE** = all lines **after** that owning heading line **until** the next heading whose level is ≤ the owning heading’s level — i.e. the subsection body **excluding** the owning heading line itself. Example: under \`## h2\`, body lines \`bbb\`, \`ccc\`, \`ddd\`, \`Eeee\` are in scope; the line \`## h2\` is **out of scope** for remove/add. Under \`## h2.1\` starts the next subsection.
+
+If you cannot locate BLOCK_TARGET uniquely in FULL_DOCUMENT, conservatively use only text that appears verbatim in BLOCK_TARGET as EDIT_SCOPE.
+
+## Output rules
+
 1. Apply feedback in chronological order — later comments may refine earlier ones.
-2. Output concrete edits as pairs: "remove" = text to delete from BLOCK_TARGET only (prefer exact contiguous substrings that appear verbatim in BLOCK_TARGET), "add" = replacement text (can be empty to delete only). Never use remove text taken only from FULL_DOCUMENT outside BLOCK_TARGET.
-3. You may output multiple pairs for several edits. If the comments imply replacing the whole block, use one pair with remove = full BLOCK_TARGET and add = full replacement.
-4. "summary": one short sentence describing what you did (same dominant language as BLOCK_TARGET / comments).
+2. Every \`remove\` string must be a **verbatim contiguous substring** of FULL_DOCUMENT that lies **entirely inside EDIT_SCOPE** (and must not cross outside EDIT_SCOPE). Prefer substrings that also appear in or align with BLOCK_TARGET when comments are local.
+3. \`add\` is the replacement text (can be empty to delete only). Resulting edits must stay logically inside EDIT_SCOPE (do not rewrite other sections).
+4. You may output multiple pairs. For a whole-subsection rewrite, one pair may use \`remove\` = the full EDIT_SCOPE body (or full EDIT_SCOPE including heading when the anchor is the heading) and \`add\` = the replacement block.
+5. \`summary\`: one short sentence (same dominant language as the document / comments).
 
 Return ONLY valid JSON (no markdown fences) with this shape:
 {"summary":"string","pairs":[{"remove":"string","add":"string"}]}`;

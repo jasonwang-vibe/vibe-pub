@@ -50,9 +50,10 @@ export const POST: RequestHandler = async ({ params, request, platform, locals }
     throw error(400, 'No open comments on this block');
   }
 
-  onBlock.sort((a, b) => new Date(a.created).getTime() - new Date(b.created).getTime());
+  const openOnBlock = onBlock.filter((c) => c.resolved === 0);
+  openOnBlock.sort((a, b) => new Date(a.created).getTime() - new Date(b.created).getTime());
 
-  const payload = onBlock.map((c) => ({
+  const payload = openOnBlock.map((c) => ({
     author: c.display_name?.trim() || 'Anonymous',
     body: c.body,
     created: c.created,
