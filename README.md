@@ -65,7 +65,7 @@ More templates coming. PRs welcome.
 
 ## For AI agents
 
-### Suggested system prompt (copy-paste)
+### Suggested system prompt
 
 Use this (or merge it into your agent’s instructions). It nudges the model to **read the format spec before writing**, then publish.
 
