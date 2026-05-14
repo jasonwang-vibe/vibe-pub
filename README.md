@@ -86,14 +86,14 @@ When producing markdown for vibe.pub (CLI, MCP, or API):
 
 The same rules apply when using the **vibe-pub MCP** `publish` tool: fetch the format reference first, then generate markdown, then call `publish`.
 
-### Format commands (for agents and humans)
+### Format commands
 
 ```bash
 vibe-pub format doc      # doc: title, frontmatter, lede, sections
 vibe-pub format kanban   # kanban: columns, cards, labels, ids
 ```
 
-### CLI safety (non-interactive use)
+### CLI safety
 
 - `--access` defaults to `unlisted` (no accidental public posts)
 - Idempotent `update <id>` for revisions
