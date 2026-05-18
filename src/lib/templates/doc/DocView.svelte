@@ -556,9 +556,9 @@
   article.doc-view :global(h1) {
     font-weight: 400;
     font-size: var(--reader-h1-size);
-    line-height: 1.12;
+    line-height: 1.1;
     letter-spacing: -0.025em;
-    margin: 48px 0 16px;
+    margin: 56px 0 20px;
   }
 
   article.doc-view :global(a) {

@@ -2569,8 +2569,8 @@
   .doc-hero-title {
     font-family: var(--font-serif);
     font-weight: 400;
-    font-size: clamp(36px, 4.5vw, 48px);
-    line-height: 1.06;
+    font-size: clamp(40px, 5vw, 56px);
+    line-height: 1.04;
     letter-spacing: -0.028em;
     text-align: left;
     margin: 0 0 20px;
@@ -3827,7 +3827,7 @@
       padding: 16px 16px 80px;
     }
     .doc-hero-title {
-      font-size: 32px;
+      font-size: 36px;
     }
     .doc-lede {
       font-size: 17px;
@@ -3840,7 +3840,7 @@
 
   @media (min-width: 640px) and (max-width: 959px) {
     .doc-hero-title {
-      font-size: 42px;
+      font-size: 48px;
     }
     .doc-lede {
       font-size: 18px;
