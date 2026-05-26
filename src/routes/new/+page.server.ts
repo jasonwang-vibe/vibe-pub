@@ -23,7 +23,8 @@ export const actions: Actions = {
 
     const { data: fm, content } = parseFrontmatter(markdown);
 
-    const view = (fm.view as 'doc' | 'kanban' | 'changelog') ?? detectView(markdown);
+    // PageView: frontmatter wins; detectView never returns slides/dashboard
+    const view = fm.view ?? detectView(markdown);
     const theme = fm.theme ?? 'default';
     const access = fm.access ?? 'unlisted';
 

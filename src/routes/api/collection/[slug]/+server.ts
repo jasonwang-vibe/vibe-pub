@@ -1,10 +1,11 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
+import { isResourceAccess, RESOURCE_ACCESS_VALIDATION_MESSAGE } from '$lib/constants/page';
 import {
   assertCollectionAccessForOwner,
   assertCollectionOwner,
-  PAGES_ORDER_SQL,
+  buildCollectionPagesSelectQuery,
   getCollectionBySlug,
   readerGuideFromBody,
   readerGuideFromRow,
@@ -48,12 +49,9 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
   const pages = await db
     .prepare(
-      `SELECT p.slug, p.title, p.view, cp.sort_order, cp.label, cp.part_id
-       FROM collection_pages cp
-       JOIN pages p ON p.id = cp.page_id
-       LEFT JOIN collection_parts pt ON pt.id = cp.part_id
-       WHERE cp.collection_id = ?
-       ${PAGES_ORDER_SQL}`
+      buildCollectionPagesSelectQuery(
+        'p.slug, p.title, p.view, cp.sort_order, cp.label, cp.part_id'
+      )
     )
     .bind(collection.id)
     .all<{
@@ -136,8 +134,8 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     values.push(readerGuide.how_to_read_it);
   }
   if (access !== undefined) {
-    if (!['public', 'unlisted', 'private'].includes(access)) {
-      throw error(400, 'access must be public, unlisted, or private');
+    if (!isResourceAccess(access)) {
+      throw error(400, RESOURCE_ACCESS_VALIDATION_MESSAGE);
     }
     assertCollectionAccessForOwner(access, collection.user_id);
     sets.push('access = ?');

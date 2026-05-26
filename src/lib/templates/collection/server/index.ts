@@ -10,20 +10,16 @@ export {
   assertCollectionAccessForOwner,
   assertCollectionReadable,
   resolveCollectionAccess,
-  type CollectionAccess,
   touchCollectionUpdated,
   getPartInCollection,
   nextPartSortOrder,
   nextPageSortOrderInPart,
   readerGuideFromRow,
   readerGuideFromBody,
-  PAGES_ORDER_SQL,
+  buildCollectionPagesSelectQuery,
   type DbCollectionRow,
   type ReaderGuide,
 } from './db';
-
-/** @deprecated Use PAGES_ORDER_SQL */
-export { PAGES_ORDER_SQL as COLLECTION_PAGES_ORDER_SQL } from './db';
 
 export {
   type CollectionRow,

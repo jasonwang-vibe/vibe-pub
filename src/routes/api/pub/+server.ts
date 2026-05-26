@@ -4,6 +4,7 @@ import { getDb, createPage, getPagesByUser, appendPageVersionSnapshot } from '$l
 import { isValidSlug, buildCanonicalPath } from '$lib/server/slug';
 import { parseFrontmatter } from '$lib/server/markdown';
 import { detectView } from '$lib/templates/detect';
+import type { PageView, ResourceAccess } from '$lib/constants/page';
 
 export const POST: RequestHandler = async ({ request, locals, platform }) => {
   if (!platform) throw error(500, 'No platform');
@@ -12,16 +13,9 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
   const contentType = request.headers.get('content-type') ?? '';
   let markdown: string;
   let slugOverride: string | undefined;
-  let viewOverride:
-    | 'doc'
-    | 'kanban'
-    | 'changelog'
-    | 'timeline'
-    | 'slides'
-    | 'dashboard'
-    | undefined;
+  let viewOverride: PageView | undefined;
   let themeOverride: string | undefined;
-  let accessOverride: 'public' | 'unlisted' | 'private' | undefined;
+  let accessOverride: ResourceAccess | undefined;
   /** Only `true` when JSON body explicitly sets `agent_published: true` (CLI/MCP). */
   let agentPublished = false;
 
@@ -59,6 +53,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
     slug = slugOverride;
   }
 
+  // PageView: explicit override → frontmatter → heuristic (never yields slides/dashboard)
   const view = viewOverride ?? fm.view ?? detectView(markdown);
   const theme = themeOverride ?? fm.theme ?? 'default';
   const access = accessOverride ?? fm.access ?? 'unlisted';

@@ -21,6 +21,7 @@
   let contentSize = $derived(new Blob([markdownInput]).size);
   let sizeWarning = $derived(contentSize > MAX_SIZE);
 
+  /** Heuristic only — ignores frontmatter; server uses `fm.view ?? detectView()` on publish. */
   let detectedView = $derived(detectView(markdownInput));
 
   let wordCount = $derived.by(() => {

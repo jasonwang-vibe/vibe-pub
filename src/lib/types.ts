@@ -4,22 +4,9 @@ import type { ChangelogRelease } from '$lib/templates/changelog/parser';
 import type { TimelineSection } from '$lib/templates/timeline/parser';
 import type { Slide } from '$lib/templates/slides/parser';
 import type { DashboardSection } from '$lib/templates/dashboard/parser';
+import type { PageTheme, PageView, ResourceAccess } from '$lib/constants/page';
 
-export type PageTheme =
-  | 'default'
-  | 'paper'
-  | 'terminal'
-  | 'midnight'
-  | 'rose'
-  | 'ocean'
-  | 'stripe'
-  | 'claude'
-  | 'raycast'
-  | 'nord'
-  | 'monokai'
-  | 'dracula'
-  | 'solarized'
-  | 'github';
+export type { PageTheme, PageView, ResourceAccess };
 
 export interface Page {
   id: string;
@@ -33,9 +20,9 @@ export interface Page {
   workspace_id: string | null;
   title: string | null;
   markdown: string;
-  view: 'doc' | 'kanban' | 'changelog' | 'timeline' | 'slides' | 'dashboard';
+  view: PageView;
   theme: PageTheme;
-  access: 'public' | 'unlisted' | 'private';
+  access: ResourceAccess;
   /** 1 = published via agent tooling (CLI/MCP/API `agent_published`); 0 = web / legacy */
   agent_published: number;
   expires_at: string | null;
@@ -90,9 +77,9 @@ export interface CollectionPart {
 }
 
 export interface PageFrontmatter {
-  view?: 'doc' | 'kanban' | 'changelog' | 'timeline' | 'slides' | 'dashboard';
+  view?: PageView;
   theme?: PageTheme;
-  access?: 'public' | 'unlisted' | 'private';
+  access?: ResourceAccess;
   title?: string;
   expires?: string;
   /** Kanban reader: small caps line above hero (e.g. roadmap · q2 2026) */

@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { D1Database } from '@cloudflare/workers-types';
 import { toRoman } from '$lib/roman';
-import { assertCollectionReadable, PAGES_ORDER_SQL } from './db';
+import { assertCollectionReadable, buildCollectionPagesSelectQuery } from './db';
 import { markdownToPlainSearchText } from '$lib/templates/collection/search/plaintext';
 
 export type SearchEntry = {
@@ -65,15 +65,10 @@ export async function loadSearchIndex(
 
   const pagesResult = await db
     .prepare(
-      `
-      SELECT cp.page_id, cp.part_id, cp.label,
-             p.id, p.slug, p.title, p.markdown
-      FROM collection_pages cp
-      JOIN pages p ON cp.page_id = p.id
-      LEFT JOIN collection_parts pt ON pt.id = cp.part_id
-      WHERE cp.collection_id = ?
-      ${PAGES_ORDER_SQL}
-    `
+      buildCollectionPagesSelectQuery(`
+        cp.page_id, cp.part_id, cp.label,
+        p.id, p.slug, p.title, p.markdown
+      `)
     )
     .bind(collection.id)
     .all<PageRow>();

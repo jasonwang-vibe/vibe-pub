@@ -2,6 +2,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import * as api from '../lib/api.js';
+import { PAGE_VIEW_TYPE, RESOURCE_ACCESS } from '../lib/constants.js';
+
+/** @type {[string, ...string[]]} */
+const resourceAccessEnum = RESOURCE_ACCESS;
+/** @type {[string, ...string[]]} */
+const pageViewEnum = PAGE_VIEW_TYPE;
 
 async function resolveSlug(slug) {
   return api.getBySlug(slug);
@@ -21,13 +27,10 @@ export async function startMcp() {
       markdown: z.string().describe('Markdown content to publish'),
       slug: z.string().optional().describe('Custom URL slug'),
       view: z
-        .string()
+        .enum(pageViewEnum)
         .optional()
         .describe('Page view: doc, kanban, changelog, timeline, slides, dashboard'),
-      access: z
-        .enum(['public', 'unlisted', 'private'])
-        .optional()
-        .describe('Access level (default: unlisted)'),
+      access: z.enum(resourceAccessEnum).optional().describe('Access level (default: unlisted)'),
       theme: z.string().optional().describe('Page theme'),
       agent_published: z
         .boolean()
@@ -227,10 +230,7 @@ export async function startMcp() {
         )
         .optional()
         .describe('Ordered parts with optional page slugs each'),
-      access: z
-        .enum(['public', 'unlisted', 'private'])
-        .optional()
-        .describe('Access level (default: unlisted)'),
+      access: z.enum(resourceAccessEnum).optional().describe('Access level (default: unlisted)'),
       description: z
         .string()
         .optional()
@@ -274,7 +274,7 @@ export async function startMcp() {
       slug: z.string().describe('Collection slug'),
       title: z.string().optional(),
       description: z.string().optional(),
-      access: z.enum(['public', 'unlisted', 'private']).optional(),
+      access: z.enum(resourceAccessEnum).optional(),
       ...readerGuideSchema,
     },
     async ({

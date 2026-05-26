@@ -1,23 +1,31 @@
+import type { PageView } from '$lib/constants/index';
+
 /**
- * Auto-detect whether markdown content should render as 'doc', 'kanban', 'changelog', or 'timeline'.
+ * Markdown heuristics for `pages.view` when no explicit view is set.
  *
- * Kanban heuristic: 2+ headings (## level) where each heading is immediately
- * followed by checkbox list items (- [ ] or - [x]).
+ * Return type is {@link PageView} for a single type across the codebase, but this
+ * function **only ever returns** `doc | kanban | changelog | timeline` at runtime.
+ * It never returns `slides` or `dashboard` — those must come from YAML `view:` or
+ * publish flags (`--view`, API body). Callers that need the final view should use:
  *
- * Changelog heuristic: 2+ `## [version]` headings (version in brackets, optional date),
- * each with at least one `### Category` sub-heading.
+ * `explicitView ?? detectView(markdown)` (see `api/pub`, `new/+page.server`).
  *
- * Timeline heuristic: 2+ `## Section` headings (NOT matching changelog's `## [version]` pattern),
- * each with at least one `### Period` sub-heading followed by list items.
+ * Heuristics (conservative — non-doc only when unambiguous):
  *
- * Conservative — only returns non-doc when the pattern is unambiguous.
+ * - **kanban** — 2+ `##` headings each immediately followed by `- [ ]` / `- [x]` items
+ * - **changelog** — 2+ `## [version]` headings, each with a `### Category` child
+ * - **timeline** — 3+ `##` sections (not `[version]`), each with `###` + list items (≥70% match)
+ * - **doc** — default fallback
  *
- * Note: slides are ONLY detected via frontmatter `view: slides` (not heuristic),
- * because --- is ambiguous (could be a horizontal rule).
+ * Not detected here:
+ *
+ * - **slides** — `---` separators are ambiguous (horizontal rules vs slide breaks)
+ * - **dashboard** — no stable markdown signature yet
+ *
+ * UI note: `/new` preview calls this without parsing frontmatter; a pasted `view: slides`
+ * block is honored on publish but may still show a doc preview until publish.
  */
-export function detectView(
-  markdown: string
-): 'doc' | 'kanban' | 'changelog' | 'timeline' | 'dashboard' {
+export function detectView(markdown: string): PageView {
   const lines = markdown.split('\n');
 
   // ── Changelog detection ── (must run before timeline to avoid false matches)

@@ -1,5 +1,10 @@
 import { error } from '@sveltejs/kit';
 import type { D1Database } from '@cloudflare/workers-types';
+import {
+  DEFAULT_RESOURCE_ACCESS,
+  isResourceAccess,
+  type ResourceAccess,
+} from '$lib/constants/page';
 
 export function newCollectionEntityId(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 16);
@@ -30,21 +35,15 @@ export function assertCollectionOwner(
   }
 }
 
-export type CollectionAccess = 'public' | 'unlisted' | 'private';
-
-const COLLECTION_ACCESS_LEVELS: CollectionAccess[] = ['public', 'unlisted', 'private'];
-
 /** Collections without an owner cannot be private or unlisted — always public. */
 export function resolveCollectionAccess(
   access: string | undefined,
   ownerUserId: string | null | undefined,
-  defaultAccess: CollectionAccess = 'unlisted'
-): CollectionAccess {
+  defaultAccess: ResourceAccess = DEFAULT_RESOURCE_ACCESS
+): ResourceAccess {
   if (!ownerUserId) return 'public';
   if (access === undefined) return defaultAccess;
-  if (COLLECTION_ACCESS_LEVELS.includes(access as CollectionAccess)) {
-    return access as CollectionAccess;
-  }
+  if (isResourceAccess(access)) return access;
   return defaultAccess;
 }
 
@@ -163,9 +162,28 @@ export function readerGuideFromBody(body: {
   return out;
 }
 
-/** Flat page order: parts by sort_order, then pages within each part; ungrouped last. */
-export const PAGES_ORDER_SQL = `
-  ORDER BY
-    CASE WHEN cp.part_id IS NULL THEN 1 ELSE 0 END,
-    COALESCE(pt.sort_order, 999999),
-    cp.sort_order ASC`;
+/**
+ * Shared SELECT for collection membership rows in reader order.
+ *
+ * Sort order:
+ * 1. Pages in a part before ungrouped pages (`part_id IS NULL` last)
+ * 2. Parts by `collection_parts.sort_order`
+ * 3. Pages within a part by `collection_pages.sort_order`
+ */
+/**
+ * @param selectColumns SQL column list (no `SELECT` keyword), e.g. `p.id, p.slug`
+ */
+export function buildCollectionPagesSelectQuery(selectColumns: string): string {
+  const columns = selectColumns.trim().replace(/\s+/g, ' ');
+  return [
+    `SELECT ${columns}`,
+    'FROM collection_pages AS cp',
+    'INNER JOIN pages AS p ON p.id = cp.page_id',
+    'LEFT JOIN collection_parts AS pt ON pt.id = cp.part_id',
+    'WHERE cp.collection_id = ?',
+    `ORDER BY
+  CASE WHEN cp.part_id IS NULL THEN 1 ELSE 0 END,
+  COALESCE(pt.sort_order, 999999),
+  cp.sort_order ASC`,
+  ].join('\n');
+}

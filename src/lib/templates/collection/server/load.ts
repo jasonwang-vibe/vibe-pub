@@ -1,7 +1,11 @@
 import { error } from '@sveltejs/kit';
 import type { D1Database } from '@cloudflare/workers-types';
 import { getCommentsByPage, getUserById } from '$lib/server/db';
-import { assertCollectionReadable, PAGES_ORDER_SQL, readerGuideFromRow } from './db';
+import {
+  assertCollectionReadable,
+  buildCollectionPagesSelectQuery,
+  readerGuideFromRow,
+} from './db';
 import { renderMarkdown, parseFrontmatter } from '$lib/server/markdown';
 import { buildCanonicalPath } from '$lib/server/slug';
 import { toRoman } from '$lib/roman';
@@ -303,15 +307,10 @@ export async function loadCollectionReaderContext(
 
   const pagesResult = await db
     .prepare(
-      `
-      SELECT cp.page_id, cp.sort_order, cp.label, cp.part_id,
-             p.id, p.slug, p.title, p.markdown, p.view, p.updated
-      FROM collection_pages cp
-      JOIN pages p ON cp.page_id = p.id
-      LEFT JOIN collection_parts pt ON pt.id = cp.part_id
-      WHERE cp.collection_id = ?
-      ${PAGES_ORDER_SQL}
-    `
+      buildCollectionPagesSelectQuery(`
+        cp.page_id, cp.sort_order, cp.label, cp.part_id,
+        p.id, p.slug, p.title, p.markdown, p.view, p.updated
+      `)
     )
     .bind(collection.id)
     .all<CollectionPageRow>();

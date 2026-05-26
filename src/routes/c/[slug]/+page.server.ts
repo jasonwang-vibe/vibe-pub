@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 import { getDb, getUserById } from '$lib/server/db';
 import { assertCollectionReadable } from '$lib/templates/collection/server/db';
 import {
-  PAGES_ORDER_SQL,
+  buildCollectionPagesSelectQuery,
   type CollectionPageRow,
   type CollectionPartRow,
   type CollectionRow,
@@ -39,15 +39,10 @@ export const load: PageServerLoad = async ({ params, url, platform, locals, depe
 
   const pagesResult = await db
     .prepare(
-      `
-      SELECT cp.page_id, cp.sort_order, cp.label, cp.part_id,
-             p.id, p.slug, p.title, p.markdown, p.view, p.updated
-      FROM collection_pages cp
-      JOIN pages p ON cp.page_id = p.id
-      LEFT JOIN collection_parts pt ON pt.id = cp.part_id
-      WHERE cp.collection_id = ?
-      ${PAGES_ORDER_SQL}
-    `
+      buildCollectionPagesSelectQuery(`
+        cp.page_id, cp.sort_order, cp.label, cp.part_id,
+        p.id, p.slug, p.title, p.markdown, p.view, p.updated
+      `)
     )
     .bind(collection.id)
     .all<CollectionPageRow>();
