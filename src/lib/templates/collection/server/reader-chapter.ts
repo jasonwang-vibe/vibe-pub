@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { D1Database } from '@cloudflare/workers-types';
 import { buildCanonicalPath } from '$lib/server/slug';
+import { type AccessViewer } from '$lib/server/access';
 import {
   type CollectionPageRow,
   type CollectionPartRow,
@@ -93,34 +94,21 @@ async function buildChapterPayload(
 export async function loadAllReaderChapters(
   db: D1Database,
   collectionSlug: string,
-  viewerUserId?: string
+  viewer?: AccessViewer | null
 ): Promise<ReaderChapterPayload[]> {
-  const ctx = (await loadCollectionReaderContext(
-    db,
-    collectionSlug,
-    viewerUserId
-  )) as ReaderContext;
+  const ctx = (await loadCollectionReaderContext(db, collectionSlug, viewer)) as ReaderContext;
   return Promise.all(ctx.pages.map((page, index) => buildChapterPayload(db, ctx, page, index)));
 }
-
-/** @deprecated Use loadAllReaderChapters */
-export const loadAllCollectionReaderChapters = loadAllReaderChapters;
 
 export async function loadReaderChapter(
   db: D1Database,
   collectionSlug: string,
   pageId: string,
-  viewerUserId?: string
+  viewer?: AccessViewer | null
 ): Promise<ReaderChapterPayload> {
-  const ctx = (await loadCollectionReaderContext(
-    db,
-    collectionSlug,
-    viewerUserId
-  )) as ReaderContext;
+  const ctx = (await loadCollectionReaderContext(db, collectionSlug, viewer)) as ReaderContext;
   const chapterIndex = ctx.pages.findIndex((p) => p.id === pageId || p.page_id === pageId);
   if (chapterIndex < 0) throw error(404, 'Page not found in collection');
-  return buildChapterPayload(db, ctx, ctx.pages[chapterIndex], chapterIndex);
+  const page = ctx.pages[chapterIndex];
+  return buildChapterPayload(db, ctx, page, chapterIndex);
 }
-
-/** @deprecated Use loadReaderChapter */
-export const loadCollectionReaderChapter = loadReaderChapter;

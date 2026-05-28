@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getDb, getUserById } from '$lib/server/db';
-import { assertCollectionReadable } from '$lib/templates/collection/server/db';
+import { assertCanReadCollection, toAccessViewer } from '$lib/server/access';
 import {
   buildCollectionPagesSelectQuery,
   type CollectionPageRow,
@@ -28,7 +28,8 @@ export const load: PageServerLoad = async ({ params, url, platform, locals, depe
     .first<CollectionRow>();
 
   if (!collection) throw error(404, 'Collection not found');
-  assertCollectionReadable(collection, locals.user?.id);
+  const viewer = toAccessViewer(locals.user);
+  await assertCanReadCollection(db, collection, viewer);
 
   const partsResult = await db
     .prepare(
