@@ -6,6 +6,7 @@ import {
   assertCollectionAccessForOwner,
   assertCollectionOwner,
   buildCollectionPagesSelectQuery,
+  deleteCollectionById,
   getCollectionBySlug,
   readerGuideFromBody,
   readerGuideFromRow,
@@ -163,4 +164,16 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     .first();
 
   return json(updated);
+};
+
+export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
+  if (!platform) throw error(500, 'No platform');
+  const db = getDb(platform);
+
+  const collection = await getCollectionBySlug(db, params.slug);
+  if (!collection) throw error(404, 'Collection not found');
+  assertCollectionOwner(collection, locals.user?.id);
+
+  await deleteCollectionById(db, collection.id);
+  return new Response(null, { status: 204 });
 };
