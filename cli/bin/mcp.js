@@ -2,10 +2,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import * as api from '../lib/api.js';
-import { PAGE_VIEW_TYPE, RESOURCE_ACCESS } from '../lib/constants.js';
+import { PAGE_VIEW_TYPE, RESOURCE_ACCESS_INPUT, coerceLegacyAccess } from '../lib/constants.js';
 
 /** @type {[string, ...string[]]} */
-const resourceAccessEnum = RESOURCE_ACCESS;
+const resourceAccessEnum = RESOURCE_ACCESS_INPUT;
 /** @type {[string, ...string[]]} */
 const pageViewEnum = PAGE_VIEW_TYPE;
 
@@ -30,7 +30,7 @@ export async function startMcp() {
         .enum(pageViewEnum)
         .optional()
         .describe('Page view: doc, kanban, changelog, timeline, slides, dashboard'),
-      access: z.enum(resourceAccessEnum).optional().describe('Access level (default: unlisted)'),
+      access: z.enum(resourceAccessEnum).optional().describe('Access level (default: public)'),
       theme: z.string().optional().describe('Page theme'),
       agent_published: z
         .boolean()
@@ -43,7 +43,7 @@ export async function startMcp() {
       const result = await api.publish(markdown, {
         slug,
         view,
-        access,
+        access: coerceLegacyAccess(access),
         theme,
         agentPublished: agent_published !== false,
       });
@@ -230,7 +230,7 @@ export async function startMcp() {
         )
         .optional()
         .describe('Ordered parts with optional page slugs each'),
-      access: z.enum(resourceAccessEnum).optional().describe('Access level (default: unlisted)'),
+      access: z.enum(resourceAccessEnum).optional().describe('Access level (default: public)'),
       description: z
         .string()
         .optional()
@@ -262,7 +262,7 @@ export async function startMcp() {
         slug,
         slugs: page_slugs,
         parts,
-        access,
+        access: coerceLegacyAccess(access),
         description,
         readers_guide,
         what_its_about,
@@ -298,7 +298,7 @@ export async function startMcp() {
       const data = {};
       if (title !== undefined) data.title = title;
       if (description !== undefined) data.description = description;
-      if (access !== undefined) data.access = access;
+      if (access !== undefined) data.access = coerceLegacyAccess(access);
       if (readers_guide !== undefined) data.readers_guide = readers_guide;
       if (what_its_about !== undefined) data.what_its_about = what_its_about;
       if (who_its_for !== undefined) data.who_its_for = who_its_for;
