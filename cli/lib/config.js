@@ -33,3 +33,23 @@ export function clearToken() {
   mkdirSync(CONFIG_DIR, { recursive: true });
   writeFileSync(CONFIG_FILE, JSON.stringify(rest, null, 2), 'utf8');
 }
+
+/** Last successful (up-to-date) CLI version check, persisted like baseUrl. */
+export function getVersionCheckState() {
+  const c = getConfig();
+  return {
+    checkedAt: typeof c.cliVersionCheckedAt === 'string' ? c.cliVersionCheckedAt : null,
+    versionWhenChecked:
+      typeof c.cliVersionWhenChecked === 'string' ? c.cliVersionWhenChecked : null,
+    latestKnown: typeof c.cliVersionLatestKnown === 'string' ? c.cliVersionLatestKnown : null,
+  };
+}
+
+/** Only called when registry check confirms the install is up to date. */
+export function saveVersionCheckSuccess({ versionWhenChecked, latestKnown }) {
+  saveConfig({
+    cliVersionCheckedAt: new Date().toISOString(),
+    cliVersionWhenChecked: versionWhenChecked,
+    cliVersionLatestKnown: latestKnown,
+  });
+}

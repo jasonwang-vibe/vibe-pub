@@ -3,6 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import * as api from '../lib/api.js';
 import { PAGE_VIEW_TYPE, RESOURCE_ACCESS_INPUT, coerceLegacyAccess } from '../lib/constants.js';
+import { getLocalVersion, startVersionCheck, mcpJsonContent } from '../lib/version.js';
 
 /** @type {[string, ...string[]]} */
 const resourceAccessEnum = RESOURCE_ACCESS_INPUT;
@@ -14,8 +15,10 @@ async function resolveSlug(slug) {
 }
 
 export async function startMcp() {
+  await startVersionCheck();
+
   const server = new McpServer(
-    { name: 'vibe-pub', version: '0.1.0' },
+    { name: 'vibe-pub', version: getLocalVersion() },
     { capabilities: { tools: {} } }
   );
 
@@ -47,7 +50,7 @@ export async function startMcp() {
         theme,
         agentPublished: agent_published !== false,
       });
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -60,7 +63,7 @@ export async function startMcp() {
     },
     async ({ slug }) => {
       const page = await api.getBySlug(slug);
-      return { content: [{ type: 'text', text: JSON.stringify(page) }] };
+      return mcpJsonContent(page);
     }
   );
 
@@ -75,7 +78,7 @@ export async function startMcp() {
     async ({ slug, markdown }) => {
       const page = await resolveSlug(slug);
       const result = await api.update(page.id, markdown);
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -89,11 +92,7 @@ export async function startMcp() {
     async ({ slug }) => {
       const page = await resolveSlug(slug);
       await api.remove(page.id);
-      return {
-        content: [
-          { type: 'text', text: JSON.stringify({ deleted: true, id: page.id, slug: page.slug }) },
-        ],
-      };
+      return mcpJsonContent({ deleted: true, id: page.id, slug: page.slug });
     }
   );
 
@@ -103,7 +102,7 @@ export async function startMcp() {
     'List all pages owned by the authenticated user. Requires auth token.',
     async () => {
       const pages = await api.list();
-      return { content: [{ type: 'text', text: JSON.stringify(pages) }] };
+      return mcpJsonContent(pages);
     }
   );
 
@@ -121,7 +120,7 @@ export async function startMcp() {
     async ({ slug, include_resolved }) => {
       const page = await resolveSlug(slug);
       const comments = await api.getComments(page.id, { all: include_resolved === true });
-      return { content: [{ type: 'text', text: JSON.stringify(comments) }] };
+      return mcpJsonContent(comments);
     }
   );
 
@@ -137,7 +136,7 @@ export async function startMcp() {
     async ({ slug, body, anchor }) => {
       const page = await resolveSlug(slug);
       const comment = await api.addComment(page.id, body, { anchor });
-      return { content: [{ type: 'text', text: JSON.stringify(comment) }] };
+      return mcpJsonContent(comment);
     }
   );
 
@@ -153,7 +152,7 @@ export async function startMcp() {
     async ({ slug, all, comment_ids }) => {
       const page = await resolveSlug(slug);
       const result = await api.resolveComments(page.id, { all, comment_ids });
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -167,7 +166,7 @@ export async function startMcp() {
     async ({ slug }) => {
       const page = await resolveSlug(slug);
       const versions = await api.getVersions(page.id);
-      return { content: [{ type: 'text', text: JSON.stringify(versions) }] };
+      return mcpJsonContent(versions);
     }
   );
 
@@ -182,7 +181,7 @@ export async function startMcp() {
     async ({ slug, version }) => {
       const page = await resolveSlug(slug);
       const v = await api.getVersion(page.id, version);
-      return { content: [{ type: 'text', text: JSON.stringify(v) }] };
+      return mcpJsonContent(v);
     }
   );
 
@@ -271,7 +270,7 @@ export async function startMcp() {
         theme,
         agentPublished: agent_published !== false,
       });
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -304,7 +303,7 @@ export async function startMcp() {
       if (who_its_for !== undefined) data.who_its_for = who_its_for;
       if (how_to_read_it !== undefined) data.how_to_read_it = how_to_read_it;
       const result = await api.updateCollection(slug, data);
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -317,7 +316,7 @@ export async function startMcp() {
     },
     async ({ slug }) => {
       const result = await api.getCollection(slug);
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -333,7 +332,7 @@ export async function startMcp() {
     },
     async ({ collection_slug, page_slug, label, part_id }) => {
       const result = await api.addToCollection(collection_slug, page_slug, { label, part_id });
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -346,7 +345,7 @@ export async function startMcp() {
     },
     async ({ collection_slug }) => {
       const result = await api.listCollectionParts(collection_slug);
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -361,7 +360,7 @@ export async function startMcp() {
     },
     async ({ collection_slug, title, sort_order }) => {
       const result = await api.createCollectionPart(collection_slug, title, { sort_order });
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -380,7 +379,7 @@ export async function startMcp() {
       if (title !== undefined) data.title = title;
       if (sort_order !== undefined) data.sort_order = sort_order;
       const result = await api.updateCollectionPart(collection_slug, part_id, data);
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -394,7 +393,7 @@ export async function startMcp() {
     },
     async ({ collection_slug, part_id }) => {
       const result = await api.deleteCollectionPart(collection_slug, part_id);
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 
@@ -408,7 +407,7 @@ export async function startMcp() {
     },
     async ({ collection_slug, page_slug }) => {
       const result = await api.removeFromCollection(collection_slug, page_slug);
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return mcpJsonContent(result);
     }
   );
 

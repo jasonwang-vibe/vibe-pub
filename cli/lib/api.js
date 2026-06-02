@@ -1,4 +1,5 @@
 import { getBaseUrl, getToken } from './config.js';
+import { getLocalVersion } from './version.js';
 
 class ApiError extends Error {
   constructor(message, status) {
@@ -10,7 +11,10 @@ class ApiError extends Error {
 async function request(method, path, body) {
   const base = getBaseUrl();
   const token = getToken();
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = {
+    'Content-Type': 'application/json',
+    'User-Agent': `vibe-pub-cli/${getLocalVersion()}`,
+  };
   if (token) headers['Cookie'] = `vibe_session=${token}`;
 
   const opts = { method, headers };

@@ -81,13 +81,32 @@ More templates coming. PRs welcome.
 Drop this into your agent's system prompt:
 
 > When you've produced a markdown artifact the user might want to share or revisit, run `vibe-pub publish <file>` and return the URL.
+>
+> **CLI updates:** When outdated, the CLI auto-updates (global: `npm i -g`; npx: reruns `@latest`) and retries your command. JSON may include `_vibe.cli` if auto-update failed — then run `npm install -g vibe-pub@latest`. Disable with `VIBE_PUB_CLI_NO_AUTO_UPDATE=1`.
 
 For **kanban** pages, use `vibe-pub format kanban` or `vibe-pub --format json format kanban` (JSON includes `documentation`). For **doc** pages (title, lede, sections), use `vibe-pub format doc` or `--format json format doc`.
 
 The CLI is designed to be safe for non-interactive use:
 - `--access` defaults to `public`
 - Idempotent `update <id>` for revisions
-- JSON output via `--json` for programmatic chaining (coming)
+- Default JSON output; `_vibe.cli` appears only when auto-update could not run
+- Auto-update: global install → `npm i -g vibe-pub@latest` + retry; npx → `npx -y vibe-pub@latest` + retry (local `node bin/vibe.js` and MCP skip)
+
+### Testing CLI version notices (no npm publish)
+
+Simulate an outdated install with env overrides (bypasses persisted check cache):
+
+```bash
+# Pretend you're on 0.1.0 while npm "latest" is 9.9.9
+VIBE_PUB_CLI_CURRENT=0.1.0 VIBE_PUB_CLI_LATEST=9.9.9 node bin/vibe.js whoami
+
+# See _vibe.cli on a real command (stderr + JSON body when outdated)
+VIBE_PUB_CLI_CURRENT=0.1.0 VIBE_PUB_CLI_LATEST=9.9.9 node bin/vibe.js list 2>&1
+```
+
+Or temporarily set `"version": "0.0.1"` in `cli/package.json` while npm still has `0.1.3` — no publish needed.
+
+When up to date, the last check time is saved in `~/.config/vibe/config.json` (`cliVersionCheckedAt`) and registry is skipped for 24h. If outdated, that timestamp is **not** updated so every run rechecks until you upgrade.
 
 ## How it works
 
