@@ -90,7 +90,7 @@
 </script>
 
 <svelte:head>
-  <title>New page — vibe.pub</title>
+  <title>New page — vibe-pub.sandbox.dev</title>
 </svelte:head>
 
 <div class="new-page">

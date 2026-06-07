@@ -16,14 +16,14 @@
 
 <svelte:head>
   <title
-    >{data.showCover ? data.collection.title : (data.activePage?.title ?? data.collection.title)} — vibe.pub</title
+    >{data.showCover ? data.collection.title : (data.activePage?.title ?? data.collection.title)} — vibe-pub.sandbox.dev</title
   >
   <meta property="og:title" content={data.collection.title} />
   <meta
     property="og:description"
     content={data.collection.description ?? 'A collection on vibe.pub'}
   />
-  <meta property="og:site_name" content="vibe.pub" />
+  <meta property="og:site_name" content="vibe-pub.sandbox.dev" />
 </svelte:head>
 
 <div

@@ -21,7 +21,7 @@
 </script>
 
 <svelte:head>
-  <title>{data.title} — vibe.pub</title>
+  <title>{data.title} — vibe-pub.sandbox.dev</title>
 </svelte:head>
 
 <div class="print-page">

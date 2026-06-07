@@ -738,13 +738,13 @@
 </script>
 
 <svelte:head>
-  <title>{pageTitle} — vibe.pub</title>
+  <title>{pageTitle} — vibe-pub.sandbox.dev</title>
   <meta name="description" content={description} />
   <meta property="og:title" content={pageTitle} />
   <meta property="og:description" content={description} />
   <meta property="og:type" content="article" />
   <meta property="og:url" content={pageUrl} />
-  <meta property="og:site_name" content="vibe.pub" />
+  <meta property="og:site_name" content="vibe-pub.sandbox.dev" />
   <meta property="og:image" content={`${$pageStore.url.origin}/og${canonicalPath}`} />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />

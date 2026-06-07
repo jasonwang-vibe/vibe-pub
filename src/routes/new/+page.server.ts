@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb, createPage } from '$lib/server/db';
 import { buildCanonicalPath } from '$lib/server/slug';
@@ -47,9 +47,9 @@ export const actions: Actions = {
     });
 
     const canonicalPath = buildCanonicalPath(page);
-    const baseUrl = platform.env.BASE_URL ?? 'https://vibe.pub';
+    const baseUrl = platform.env.BASE_URL ?? 'https://vibe-pub.sandbox.dev';
     const url = `${baseUrl}${canonicalPath}`;
 
-    return { url, canonicalPath };
+    throw redirect(303, `/published?path=${encodeURIComponent(canonicalPath)}&url=${encodeURIComponent(url)}`);
   },
 };
