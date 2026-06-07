@@ -1,0 +1,36 @@
+name: Deploy to Cloudflare Pages
+
+# Commit → live: every push to main builds and deploys to production.
+# Requires one repo secret: CLOUDFLARE_API_TOKEN
+#   (Cloudflare dashboard → My Profile → API Tokens → Create Token →
+#    "Cloudflare Pages — Edit" template → copy → add as a GitHub Actions secret)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: d257edff564061e58ba1072ca65f8467
+          command: pages deploy .svelte-kit/cloudflare --project-name vibe-pub --branch main

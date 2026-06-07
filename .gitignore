@@ -19,3 +19,6 @@ dist
 .pm/
 
 /test-results
+
+# Local Claude Code config / worktrees
+.claude/

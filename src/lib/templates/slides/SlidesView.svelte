@@ -33,13 +33,70 @@
     goTo(current - 1);
   }
 
+  // ── Stage controls: overview grid, fullscreen, more menu, view source ──
+  let overview = $state(false);
+  let moreOpen = $state(false);
+  let sourceOpen = $state(false);
+  let filmstripOpen = $state(false);
+  let kbdOpen = $state(false);
+  let appearanceOpen = $state(false);
+  let ratio = $state<'16-9' | '4-3' | 'letter'>('16-9');
+  let indicator = $state<'dots' | 'bar' | 'none'>('dots');
+  let containerEl = $state<HTMLDivElement | undefined>();
+
+  function slideTitle(slide: Slide): string {
+    const m = slide.markdown.match(/^#{1,2}\s+(.+)$/m);
+    return m ? m[1].replace(/\*(.+?)\*/g, '$1').trim() : `Slide ${slide.index + 1}`;
+  }
+  function pad(n: number): string {
+    return String(n).padStart(2, '0');
+  }
+
+  function toggleOverview() {
+    overview = !overview;
+    moreOpen = false;
+  }
+  function jumpTo(i: number) {
+    current = i;
+    overview = false;
+  }
+  function toggleFullscreen() {
+    if (!browser || !containerEl) return;
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else containerEl.requestFullscreen?.().catch(() => {});
+  }
+
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    if (e.target instanceof HTMLElement && e.target.closest('input, textarea')) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
       e.preventDefault();
       next();
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       e.preventDefault();
       prev();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      goTo(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      goTo(slides.length - 1);
+    } else if (e.key === 'o' || e.key === 'O') {
+      e.preventDefault();
+      toggleOverview();
+    } else if (e.key === 'f' || e.key === 'F') {
+      e.preventDefault();
+      toggleFullscreen();
+    } else if (e.key === 's' || e.key === 'S') {
+      e.preventDefault();
+      sourceOpen = !sourceOpen;
+    } else if (e.key === '?') {
+      e.preventDefault();
+      kbdOpen = !kbdOpen;
+    } else if (e.key === 'Escape') {
+      if (kbdOpen) { kbdOpen = false; return; }
+      if (appearanceOpen) { appearanceOpen = false; return; }
+      if (sourceOpen) { sourceOpen = false; return; }
+      if (overview) { overview = false; return; }
     }
   }
 
@@ -135,14 +192,81 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="slides-container">
+<div class="slides-container" bind:this={containerEl}>
   <!-- Progress bar -->
   <div class="slides-progress">
     <div class="slides-progress-bar" style="width: {progress}%"></div>
   </div>
 
-  <!-- Slide area -->
-  <div class="slides-viewport">
+  <!-- Stage controls (overview / fit / more) -->
+  {#if slides.length > 0}
+    <div class="slides-controls">
+      <button class="sc-btn" class:active={overview} onclick={toggleOverview} title="Overview">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          ><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect
+            x="3"
+            y="14"
+            width="7"
+            height="7"
+            rx="1"
+          /><rect x="14" y="14" width="7" height="7" rx="1" /></svg
+        >
+        overview
+      </button>
+      <button class="sc-btn sc-icon" onclick={toggleFullscreen} title="Fit / fullscreen" aria-label="Fullscreen">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          ><path
+            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"
+          /></svg
+        >
+      </button>
+      <div class="sc-more">
+        <button class="sc-btn sc-icon" onclick={() => (moreOpen = !moreOpen)} title="More" aria-label="More">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            ><circle cx="5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="19" cy="12" r="1.4" /></svg
+          >
+        </button>
+        {#if moreOpen}
+          <div class="sc-menu">
+            <button
+              onclick={() => {
+                sourceOpen = !sourceOpen;
+                moreOpen = false;
+              }}>
+              {sourceOpen ? 'Hide source' : 'View source'}
+              <span class="sc-kbd">s</span>
+            </button>
+            <button onclick={() => { filmstripOpen = !filmstripOpen; moreOpen = false; }}>
+              {filmstripOpen ? 'Hide filmstrip' : 'Show filmstrip'}
+            </button>
+            <button onclick={() => { kbdOpen = true; moreOpen = false; }}>
+              Keyboard shortcuts
+              <span class="sc-kbd">?</span>
+            </button>
+            <div class="sc-divider"></div>
+            <button onclick={() => { appearanceOpen = !appearanceOpen; moreOpen = false; }}>
+              Appearance
+            </button>
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
+  {#if overview}
+    <div class="slides-overview">
+      <div class="ov-grid">
+        {#each slides as s, i}
+          <button class="ov-cell" class:current={i === current} onclick={() => jumpTo(i)} aria-label="Go to slide {i + 1}">
+            <div class="ov-thumb"><div class="ov-thumb-inner prose">{@html s.html}</div></div>
+            <span class="ov-num">{i + 1}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {:else}
+    <!-- Slide area -->
+    <div class="slides-viewport">
     {#if slides.length > 0}
       <div class="slide-card" class:slide-fade-out={transitioning}>
         {#if pageId}
@@ -198,55 +322,113 @@
     {/if}
   </div>
 
-  <!-- Navigation -->
+  <!-- Controls bar -->
   {#if slides.length > 1}
-    <div class="slides-nav">
-      <button
-        class="slides-nav-btn"
-        onclick={prev}
-        disabled={current === 0}
-        aria-label="Previous slide"
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-      </button>
-
-      <span class="slides-counter">
-        {current + 1} / {slides.length}
-      </span>
-
-      <button
-        class="slides-nav-btn"
-        onclick={next}
-        disabled={current === slides.length - 1}
-        aria-label="Next slide"
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M9 18l6-6-6-6" />
-        </svg>
-      </button>
+    <div class="slides-controls-bar">
+      <div class="scb-left">
+        <span class="scb-pos">
+          <span class="scb-now">{pad(current + 1)}</span>
+          <span class="scb-slash">/</span>
+          <span class="scb-total">{pad(slides.length)}</span>
+        </span>
+        <span class="scb-sep">·</span>
+        <span class="scb-kicker">{slideTitle(slides[current])}</span>
+      </div>
+      <div class="scb-center">
+        <button class="slides-nav-btn" onclick={prev} disabled={current === 0} aria-label="Previous slide">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        {#if indicator === 'dots'}
+          <div class="scb-dots">
+            {#each slides as _, i}
+              <button
+                class="scb-dot"
+                class:active={i === current}
+                onclick={() => goTo(i)}
+                aria-label="Go to slide {i + 1}"
+              ></button>
+            {/each}
+          </div>
+        {:else if indicator === 'bar'}
+          <div class="scb-bar"><div class="scb-bar-fill" style="width: {progress}%"></div></div>
+        {/if}
+        <button class="slides-nav-btn" onclick={next} disabled={current === slides.length - 1} aria-label="Next slide">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="scb-right"></div>
     </div>
   {/if}
+
+  <!-- Filmstrip -->
+  {#if filmstripOpen && slides.length > 0}
+    <div class="slides-filmstrip">
+      <div class="sf-inner">
+        {#each slides as slide, i}
+          <button
+            class="sf-thumb"
+            class:active={i === current}
+            onclick={() => { goTo(i); }}
+            aria-label="Go to slide {i + 1}"
+          >
+            <span class="sf-no">{pad(i + 1)}</span>
+            <span class="sf-title">{slideTitle(slide)}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
+{/if}
 </div>
+
+<!-- Appearance panel -->
+{#if appearanceOpen}
+  <div class="slides-ap-backdrop" onclick={() => (appearanceOpen = false)} role="presentation"></div>
+  <div class="slides-ap">
+    <div class="ap-section">
+      <div class="ap-label">Aspect ratio</div>
+      <div class="ap-row">
+        {#each [['16-9','16:9'],['4-3','4:3'],['letter','letter']] as [val, lbl]}
+          <button class="ap-btn" class:active={ratio === (val as typeof ratio)} onclick={() => (ratio = val as typeof ratio)}>{lbl}</button>
+        {/each}
+      </div>
+    </div>
+    <div class="ap-section">
+      <div class="ap-label">Progress</div>
+      <div class="ap-row">
+        {#each [['dots','dots'],['bar','bar'],['none','none']] as [val, lbl]}
+          <button class="ap-btn" class:active={indicator === (val as typeof indicator)} onclick={() => (indicator = val as typeof indicator)}>{lbl}</button>
+        {/each}
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Keyboard shortcuts modal -->
+{#if kbdOpen}
+  <div class="kbd-bg" onclick={() => (kbdOpen = false)} role="presentation"></div>
+  <div class="kbd-modal" role="dialog" aria-label="Keyboard shortcuts">
+    <div class="kbd-head">
+      <div>
+        <h3>Keyboard <em>shortcuts</em></h3>
+        <p>press <strong>?</strong> anytime</p>
+      </div>
+      <button class="kbd-close" onclick={() => (kbdOpen = false)} aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="kbd-grid">
+      <div class="kbd-row"><span>Next slide</span><span class="kbd-keys"><kbd>→</kbd><span>/</span><kbd>Space</kbd></span></div>
+      <div class="kbd-row"><span>Previous slide</span><span class="kbd-keys"><kbd>←</kbd></span></div>
+      <div class="kbd-row"><span>First / last slide</span><span class="kbd-keys"><kbd>Home</kbd><span>/</span><kbd>End</kbd></span></div>
+      <div class="kbd-row"><span>Overview grid</span><span class="kbd-keys"><kbd>o</kbd></span></div>
+      <div class="kbd-row"><span>View source</span><span class="kbd-keys"><kbd>s</kbd></span></div>
+      <div class="kbd-row"><span>Fullscreen</span><span class="kbd-keys"><kbd>f</kbd></span></div>
+      <div class="kbd-row"><span>Keyboard shortcuts</span><span class="kbd-keys"><kbd>?</kbd></span></div>
+      <div class="kbd-row"><span>Close / exit</span><span class="kbd-keys"><kbd>Esc</kbd></span></div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .slides-container {
@@ -273,13 +455,156 @@
     transition: width 300ms ease;
   }
 
+  /* ── Stage controls (top toolbar) ── */
+  .slides-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 10px 16px 0;
+    z-index: 30;
+  }
+
+  .sc-btn {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    line-height: 1;
+  }
+
+  .sc-btn:hover {
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  }
+
+  .sc-btn.active {
+    background: var(--text-primary);
+    color: var(--bg);
+  }
+
+  .sc-icon {
+    padding: 6px;
+    width: 30px;
+    height: 30px;
+    justify-content: center;
+  }
+
+  .sc-more {
+    position: relative;
+  }
+
+  .sc-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 210px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-elevated);
+    padding: 4px;
+    z-index: 60;
+  }
+
+  .sc-menu button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 7px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text-primary);
+    text-align: left;
+    gap: 6px;
+  }
+
+  .sc-menu button:hover {
+    background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  }
+
+  /* ── Overview grid ── */
+  .slides-overview {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    z-index: 20;
+    overflow-y: auto;
+    padding: 32px 24px 48px;
+  }
+
+  .ov-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .ov-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+  }
+
+  .ov-thumb {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+    transition: all 160ms ease;
+    padding: 12px 14px;
+  }
+
+  .ov-cell:hover .ov-thumb {
+    border-color: var(--text-tertiary);
+    transform: translateY(-2px);
+  }
+
+  .ov-cell.current .ov-thumb {
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-primary) 10%, transparent);
+  }
+
+  .ov-thumb-inner {
+    font-size: 10px;
+    pointer-events: none;
+    overflow: hidden;
+    max-height: 100%;
+  }
+
+  .ov-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+  }
+
   /* ── Viewport ── */
   .slides-viewport {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 48px 24px;
+    padding: 24px 24px 16px;
   }
 
   .slide-card {
@@ -549,27 +874,71 @@
     font-style: italic;
   }
 
-  /* ── Navigation ── */
-  .slides-nav {
+  /* ── Controls bar ── */
+  .slides-controls-bar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 12px 32px 20px;
+    gap: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    position: sticky;
+    bottom: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+  }
+
+  .scb-left {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 16px 24px 32px;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
   }
+
+  .scb-pos {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .scb-now { color: var(--text-primary); font-weight: 600; }
+  .scb-slash { opacity: 0.4; margin: 0 3px; }
+  .scb-sep { opacity: 0.4; flex-shrink: 0; }
+
+  .scb-kicker {
+    color: var(--text-secondary);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 11px;
+  }
+
+  .scb-center {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .scb-right { min-width: 0; }
 
   .slides-nav-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
     border-radius: var(--radius-pill);
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 150ms ease;
+    flex-shrink: 0;
   }
 
   .slides-nav-btn:hover:not(:disabled) {
@@ -583,11 +952,320 @@
     cursor: default;
   }
 
-  .slides-counter {
+  /* Progress dots */
+  .scb-dots {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: wrap;
+    max-width: 260px;
+  }
+
+  .scb-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-primary) 18%, transparent);
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    transition: all 140ms ease;
+    flex-shrink: 0;
+  }
+
+  .scb-dot:hover {
+    background: color-mix(in srgb, var(--text-primary) 45%, transparent);
+  }
+
+  .scb-dot.active {
+    background: var(--text-primary);
+    width: 20px;
+  }
+
+  /* Progress bar */
+  .scb-bar {
+    width: 160px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 999px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scb-bar-fill {
+    position: absolute;
+    inset: 0;
+    background: var(--text-primary);
+    border-radius: 999px;
+    transition: width 220ms ease;
+    width: 0%;
+  }
+
+  /* ── Filmstrip ── */
+  .slides-filmstrip {
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 32px 20px;
+  }
+
+  .sf-inner {
+    display: flex;
+    gap: 8px;
+    padding-top: 12px;
+    min-width: min-content;
+  }
+
+  .sf-thumb {
+    flex: 0 0 auto;
+    width: 140px;
+    aspect-ratio: 16 / 9;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 140ms ease;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+    overflow: hidden;
+  }
+
+  .sf-thumb:hover {
+    border-color: var(--text-tertiary);
+    transform: translateY(-2px);
+  }
+
+  .sf-thumb.active {
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-primary) 10%, transparent);
+  }
+
+  .sf-no {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 9px;
+    font-weight: 600;
     color: var(--text-tertiary);
-    min-width: 60px;
+    letter-spacing: 0.06em;
+  }
+
+  .sf-title {
+    font-family: var(--font-serif);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-primary);
+    line-height: 1.2;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    letter-spacing: -0.01em;
+  }
+
+  /* ── More menu additions ── */
+  .sc-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 3px 0;
+  }
+
+  .sc-kbd {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+  }
+
+  /* ── Appearance panel ── */
+  .slides-ap-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+  }
+
+  .slides-ap {
+    position: fixed;
+    top: 56px;
+    right: 16px;
+    width: 280px;
+    background: var(--bg);
+    border-radius: 14px;
+    box-shadow: var(--shadow-elevated);
+    border: 1px solid var(--border);
+    padding: 18px;
+    z-index: 50;
+  }
+
+  .ap-section {
+    margin-bottom: 16px;
+  }
+
+  .ap-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .ap-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+  }
+
+  .ap-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .ap-btn {
+    flex: 1;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 7px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .ap-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+  }
+
+  .ap-btn.active {
+    background: var(--text-primary);
+    color: var(--bg);
+    border-color: var(--text-primary);
+  }
+
+  /* ── Keyboard shortcuts modal ── */
+  .kbd-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 110;
+  }
+
+  .kbd-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 420px;
+    max-width: calc(100vw - 40px);
+    background: var(--bg);
+    border-radius: 16px;
+    box-shadow: var(--shadow-elevated);
+    border: 1px solid var(--border);
+    padding: 24px 26px 22px;
+    z-index: 111;
+  }
+
+  .kbd-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .kbd-head h3 {
+    font-family: var(--font-serif);
+    font-size: 20px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--text-primary);
+  }
+
+  .kbd-head h3 em {
+    font-style: italic;
+  }
+
+  .kbd-head p {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin: 3px 0 0;
+    letter-spacing: 0.06em;
+  }
+
+  .kbd-head p strong {
+    color: var(--text-secondary);
+  }
+
+  .kbd-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .kbd-close:hover {
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    color: var(--text-primary);
+  }
+
+  .kbd-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .kbd-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 2px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+
+  .kbd-row:last-child {
+    border-bottom: 0;
+  }
+
+  .kbd-keys {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .kbd-keys span {
+    opacity: 0.5;
+  }
+
+  kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    min-width: 20px;
     text-align: center;
   }
 
