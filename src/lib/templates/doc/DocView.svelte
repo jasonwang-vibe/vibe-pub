@@ -591,6 +591,19 @@
     background: rgba(255, 255, 255, 0.06);
   }
 
+  /* Code blocks keep their own dark background on hover / active / commented —
+     the generic block tint would otherwise wash out the light-on-dark code
+     (Shiki blocks set their bg inline, so they're unaffected; this targets the
+     plain `pre:not(.shiki)` blocks used in previews). */
+  article.doc-view :global(pre:not(.shiki).block-el:hover),
+  article.doc-view :global(pre:not(.shiki).block-el.block-active),
+  article.doc-view :global(pre:not(.shiki).block-el.block-el-commented),
+  article.doc-view :global(pre:not(.shiki).block-el.block-el-commented.block-active),
+  :global(.dark) article.doc-view :global(pre:not(.shiki).block-el:hover),
+  :global(.dark) article.doc-view :global(pre:not(.shiki).block-el.block-active) {
+    background: var(--text-primary);
+  }
+
   /* Top-level blocks are ul/ol.block-el (not .block-el > ul); hide markers when gutter shows */
   article.doc-view :global(ul.block-el:is(.block-active, .block-el-commented)),
   article.doc-view :global(ol.block-el:is(.block-active, .block-el-commented)) {
