@@ -20,5 +20,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
   }
 
-  return resolve(event);
+  const response = await resolve(event);
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return response;
 };
