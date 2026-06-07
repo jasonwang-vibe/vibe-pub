@@ -33,4 +33,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: d257edff564061e58ba1072ca65f8467
-          command: pages deploy .svelte-kit/cloudflare --project-name vibe-pub --branch main
+          command: pages deploy .svelte-kit/cloudflare --project-name vibe-pub-sandbox --branch main
