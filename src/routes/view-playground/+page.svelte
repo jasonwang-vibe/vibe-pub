@@ -24,7 +24,6 @@
   }
 
   const THEMES = ['default', 'paper', 'claude', 'stripe', 'github', 'nord', 'midnight', 'terminal'];
-  const OVERRIDES = ['doc', 'kanban', 'slides', 'changelog', 'timeline', 'dashboard'];
   const HISTORY_KEY = 'vibe-pg-history';
   const MAX_HISTORY = 20;
 
@@ -175,171 +174,6 @@
     return () => document.removeEventListener('keydown', onKey);
   });
 
-  // ── Examples ────────────────────────────────────────────────────
-  const NL = '\n';
-  const EXAMPLES: Record<string, { label: string; view?: string; files: UFile[] }> = {
-    doc: {
-      label: 'Doc',
-      view: 'doc',
-      files: [
-        {
-          name: 'field-report.md',
-          content: [
-            '# Field report',
-            '',
-            'Markdown-in, URL-out — the publishing layer for humans and agents.',
-            '',
-            '## The loop',
-            '',
-            'An agent writes, a human comments in the margin, the page updates. **Bold**, `inline code`, and [a link](#) read as part of the prose.',
-            '',
-            '> A document is a conversation — the page updates live.',
-            '',
-            '- Write the markdown',
-            '- Publish to a URL',
-            '- Let readers respond',
-          ].join(NL),
-        },
-      ],
-    },
-    kanban: {
-      label: 'Kanban',
-      view: 'kanban',
-      files: [
-        {
-          name: 'roadmap.md',
-          content: [
-            '---',
-            'view: kanban',
-            'title: Q2 Roadmap',
-            'labels:',
-            '  feature: "#3b82f6"',
-            '  bug: "#ef4444"',
-            '---',
-            '## Backlog',
-            '### SEO + meta tags {#c1} [feature]',
-            'Research keywords, update meta.',
-            '## In Progress',
-            '### Fix login redirect {#c2} [bug]',
-            'Token expires on redirect.',
-            '## Done',
-            '### Ship folder view {#c3} [feature]',
-            'Published.',
-          ].join(NL),
-        },
-      ],
-    },
-    slides: {
-      label: 'Deck',
-      view: 'slides',
-      files: [
-        {
-          name: 'deck.md',
-          content: [
-            '---',
-            'view: slides',
-            'title: Agents that publish',
-            '---',
-            '# Agents that *publish*',
-            '',
-            'The publishing layer for humans and agents.',
-            '',
-            '---',
-            '',
-            '## The loop',
-            '',
-            '1. Agent writes markdown',
-            '2. Publishes to a URL',
-            '3. Humans comment',
-            '4. Agent revises in place',
-            '',
-            '---',
-            '',
-            '## Try it',
-            '',
-            '```bash',
-            'npx vibe-pub publish report.md',
-            '```',
-          ].join(NL),
-        },
-      ],
-    },
-    folder: {
-      label: 'Folder',
-      files: [
-        {
-          name: 'onboarding-guide.md',
-          content: '# Onboarding guide' + NL + NL + 'How to get started.',
-        },
-        {
-          name: 'sprint-board.md',
-          content: [
-            '## Todo',
-            '### Task {#t1}',
-            '- [ ] a',
-            '## Done',
-            '### Done {#d1}',
-            '- [x] b',
-          ].join(NL),
-        },
-        {
-          name: 'investor-deck.md',
-          content: [
-            '---',
-            'view: slides',
-            '---',
-            '# Slide one',
-            '',
-            '---',
-            '',
-            '## Slide two',
-          ].join(NL),
-        },
-      ],
-    },
-    collection: {
-      label: 'Collection',
-      files: [
-        {
-          name: '_collection.md',
-          content: [
-            '---',
-            'title: Agents Handbook',
-            'description: A field guide to publishing with agents.',
-            '---',
-            '## Part One',
-            '- intro.md',
-            '- basics.md',
-            '## Part Two',
-            '- roadmap.md',
-          ].join(NL),
-        },
-        { name: 'intro.md', content: '# Introduction' + NL + NL + 'Welcome to the handbook.' },
-        { name: 'basics.md', content: '# The basics' + NL + NL + 'Markdown in, URL out.' },
-        {
-          name: 'roadmap.md',
-          content: [
-            '## Backlog',
-            '### Research {#r1}',
-            '- [ ] survey',
-            '## Done',
-            '### Ship it {#s1}',
-            '- [x] launched',
-          ].join(NL),
-        },
-      ],
-    },
-  };
-
-  function loadExample(key: string) {
-    const ex = EXAMPLES[key];
-    if (!ex) return;
-    pasteText = '';
-    if (ex.view) viewOverride = ex.view;
-    files = ex.files.map((f) => ({ ...f }));
-    panelOpen = false;
-  }
-
   // ── File handling ────────────────────────────────────────────────
   function readFiles(list: FileList | File[]) {
     const arr = Array.from(list).filter(
@@ -481,12 +315,6 @@
   <!-- Controls -->
   <div class="panel-controls">
     <label class="panel-field">
-      <span class="panel-field-label">view</span>
-      <select bind:value={viewOverride}>
-        {#each OVERRIDES as v}<option value={v}>{v}</option>{/each}
-      </select>
-    </label>
-    <label class="panel-field">
       <span class="panel-field-label">theme</span>
       <select bind:value={theme}>
         {#each THEMES as t}<option value={t}>{t}</option>{/each}
@@ -500,23 +328,31 @@
 
   <div class="panel-sep"></div>
 
-  <!-- Examples -->
-  <div class="panel-section">
-    {#if warning}<p class="panel-warn">{warning}</p>{/if}
-    <div class="panel-examples">
+  <!-- View type selector — 2 rows -->
+  <div class="panel-section panel-view-select">
+    <div class="panel-view-row">
       <span class="panel-ex-label">single file</span>
-      {#each Object.entries(EXAMPLES).filter(([k]) => !['folder', 'collection'].includes(k)) as [key, ex]}
-        <button class="panel-ex-btn" onclick={() => loadExample(key)}>{ex.label}</button>
+      {#each ['doc', 'kanban', 'slides', 'changelog', 'timeline', 'dashboard'] as v}
+        <button
+          class="panel-ex-btn"
+          class:active={viewOverride === v}
+          onclick={() => {
+            viewOverride = v;
+          }}>{v}</button
+        >
       {/each}
-      <span class="panel-ex-sep">·</span>
+    </div>
+    <div class="panel-view-row">
       <span class="panel-ex-label">multi-file</span>
-      {#each Object.entries(EXAMPLES).filter( ([k]) => ['folder', 'collection'].includes(k) ) as [key, ex]}
-        <button class="panel-ex-btn" onclick={() => loadExample(key)}>{ex.label}</button>
-      {/each}
+      <span class="panel-ex-muted">folder &amp; collection auto-detected</span>
     </div>
   </div>
 
   <div class="panel-sep"></div>
+
+  {#if warning}
+    <div class="panel-section"><p class="panel-warn">{warning}</p></div>
+  {/if}
 
   <!-- File list or paste textarea -->
   <div class="panel-input-area">
@@ -1111,11 +947,40 @@
     gap: 8px;
   }
 
+  /* View type selector */
+  .panel-view-select {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .panel-view-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .panel-ex-btn.active {
+    background: var(--surface);
+    border-color: var(--text-tertiary);
+    color: var(--text-primary);
+  }
+
+  .panel-ex-muted {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    opacity: 0.6;
+    font-style: italic;
+  }
+
   /* File list */
   .panel-file-list {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    padding-top: 8px;
   }
 
   .panel-file-row {
