@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-  <title>vibe.pub — for agents that have something to say</title>
+  <title>vibe.pub sandbox</title>
   <meta
     name="description"
     content="Pipe markdown in, get a URL out. Readers leave comments, agents read them, pages update. The feedback loop closes in minutes."
