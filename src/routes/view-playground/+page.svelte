@@ -768,7 +768,13 @@
       {/if}
     </div>
   {:else if result.mode === 'folder'}
-    <FolderView files={result.files} />
+    <FolderView
+      files={result.files}
+      onSelect={(name, type) => {
+        if (type) viewOverride = type;
+        activeFile = name;
+      }}
+    />
   {:else if result.mode === 'collection'}
     {#key collectionActiveId}
       <PlaygroundCollection data={collectionData} />

@@ -13,8 +13,11 @@
   interface Props {
     files: FileEntry[];
     title?: string;
+    /** When provided, file rows become clickable (used by the playground to open
+     *  a single file). Passes the filename and its detected view type. */
+    onSelect?: (filename: string, type: string) => void;
   }
-  let { files, title = 'uploaded' }: Props = $props();
+  let { files, title = 'uploaded', onSelect }: Props = $props();
 
   const ICONS: Record<string, string> = {
     doc: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="15" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>',
@@ -52,7 +55,13 @@
 
   <div class="files">
     {#each files as f (f.filename)}
-      <div class="file">
+      <svelte:element
+        this={onSelect ? 'button' : 'div'}
+        class="file"
+        class:file--clickable={!!onSelect}
+        type={onSelect ? 'button' : undefined}
+        onclick={onSelect ? () => onSelect(f.filename, f.type) : undefined}
+      >
         <div class="file-l">
           <span class="file-icon {f.type}">
             <svg
@@ -69,7 +78,7 @@
             {#if f.words}<span class="dot">·</span><span>{readingTime(f.words)} read</span>{/if}
           </div>
         </div>
-      </div>
+      </svelte:element>
     {/each}
   </div>
 </main>
@@ -133,6 +142,31 @@
   .file {
     padding: 14px 0;
     border-bottom: 1px solid var(--border);
+  }
+  button.file {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font: inherit;
+    color: inherit;
+  }
+  .file--clickable {
+    cursor: pointer;
+    transition:
+      background 0.12s ease,
+      padding-left 0.12s ease;
+  }
+  .file--clickable:hover {
+    background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+    padding-left: 10px;
+    margin-left: -10px;
+    padding-right: 10px;
+    margin-right: -10px;
+    border-radius: 6px;
   }
   .file-l {
     min-width: 0;
