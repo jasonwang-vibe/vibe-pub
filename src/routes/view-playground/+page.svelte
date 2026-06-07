@@ -376,6 +376,27 @@
   const modeLabel = $derived(
     result ? (result.mode === 'single' ? `${result.view}` : result.mode) : 'empty'
   );
+
+  // ── Doc header helpers ────────────────────────────────────────────
+  function stripLeadingH1(html: string, title: string | null): string {
+    if (!title || !html) return html;
+    // Remove the first <h1>...</h1> if its text matches the title
+    return html.replace(/^(\s*<h1[^>]*>)(.*?)(<\/h1>)/s, (match, open, inner, close) => {
+      const text = inner.replace(/<[^>]+>/g, '').trim();
+      return text === title.trim() ? '' : match;
+    });
+  }
+
+  function calcReadTime(html: string): string {
+    const text = html.replace(/<[^>]+>/g, ' ');
+    const words = text.split(/\s+/).filter(Boolean).length;
+    return `${Math.max(1, Math.round(words / 200))} min read`;
+  }
+
+  let pgDocHtml = $derived(
+    result?.view === 'doc' ? stripLeadingH1(result.html ?? '', result.title) : ''
+  );
+  let pgDocReadTime = $derived(result?.view === 'doc' ? calcReadTime(result.html ?? '') : '');
 </script>
 
 <svelte:head><title>Reader playground · vibe.pub</title></svelte:head>
@@ -624,8 +645,18 @@
   {:else if result.view === 'dashboard'}
     <DashboardView sections={result.sections} title={result.title} comments={[]} pageId="pg" />
   {:else}
-    <div class="pg-doc-wrap">
-      <DocView bind:comments={localComments} html={result.html} title={result.title} pageId="pg" />
+    <div class="pg-doc-layout">
+      <div class="pg-doc-main">
+        <header class="pg-doc-header">
+          <h1 class="pg-doc-hero-title">{result.title ?? 'Untitled'}</h1>
+          <div class="pg-doc-byline">
+            <span class="pg-doc-readtime">{pgDocReadTime}</span>
+          </div>
+        </header>
+        <article class="pg-doc-article">
+          <DocView bind:comments={localComments} html={pgDocHtml} title={null} pageId="pg" />
+        </article>
+      </div>
     </div>
   {/if}
 </div>
@@ -1108,18 +1139,53 @@
     color: #ef4444;
   }
 
-  /* ── Doc wrapper (adds padding the DocView itself lacks) ── */
-  .pg-doc-wrap {
-    max-width: 800px;
+  /* ── Doc layout (mirrors production PublishedPage .doc-layout + .doc-main) ── */
+  .pg-doc-layout {
+    max-width: 1280px;
     margin: 0 auto;
-    padding: 48px 24px 100px;
+    padding: 40px 20px 80px;
     box-sizing: border-box;
   }
 
   @media (min-width: 640px) {
-    .pg-doc-wrap {
+    .pg-doc-layout {
       padding: 64px 32px 120px;
     }
+  }
+
+  .pg-doc-main {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  /* Article header — mirrors .doc-header / .doc-hero-title / .doc-lede / .doc-byline */
+  .pg-doc-header {
+    margin-bottom: 0;
+  }
+
+  .pg-doc-hero-title {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-size: clamp(40px, 5vw, 56px);
+    line-height: 1.04;
+    letter-spacing: -0.028em;
+    color: var(--text-primary);
+    margin: 0 0 20px;
+  }
+
+  .pg-doc-byline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-bottom: 48px;
+  }
+
+  .pg-doc-article {
+    position: relative;
   }
 
   /* ── Mobile ── */
