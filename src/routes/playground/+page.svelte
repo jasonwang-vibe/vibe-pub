@@ -1,5 +1,6 @@
 <script lang="ts">
   import { beforeNavigate } from '$app/navigation';
+  import { browser } from '$app/environment';
   import DocView from '$lib/templates/doc/DocView.svelte';
   import KanbanView from '$lib/templates/kanban/KanbanView.svelte';
   import SlidesView from '$lib/templates/slides/SlidesView.svelte';
@@ -16,13 +17,13 @@
   }
 
   const THEMES = ['default', 'paper', 'claude', 'stripe', 'github', 'nord', 'midnight', 'terminal'];
-  const OVERRIDES = ['auto', 'doc', 'kanban', 'slides', 'changelog', 'timeline', 'dashboard'];
+  const OVERRIDES = ['doc', 'kanban', 'slides', 'changelog', 'timeline', 'dashboard'];
 
   let files = $state<UFile[]>([]);
   let pasteText = $state('');
   let theme = $state('default');
   let dark = $state(false);
-  let viewOverride = $state('auto');
+  let viewOverride = $state('doc');
   let inputOpen = $state(true);
   let dragging = $state(false);
   let warning = $state('');
@@ -55,7 +56,7 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           files: f,
-          view: viewOverride === 'auto' ? undefined : viewOverride,
+          view: viewOverride,
         }),
       });
       const next = (await res.json()) as any;
@@ -91,6 +92,150 @@
         : result.cover
       : null
   );
+
+  // ── Dark mode: toggle `.dark` on <html> so the whole theme flips ─
+  // (the reader's prose tokens key off `html.dark`, not a wrapper element)
+  $effect(() => {
+    if (!browser) return;
+    document.documentElement.classList.toggle('dark', dark);
+    return () => document.documentElement.classList.remove('dark');
+  });
+
+  // ── One-click examples (incl. folder & collection) ──────────────
+  const NL = '\n';
+  const EXAMPLES: Record<string, { label: string; view?: string; files: UFile[] }> = {
+    doc: {
+      label: 'Doc',
+      view: 'doc',
+      files: [
+        {
+          name: 'field-report.md',
+          content: [
+            '# Field report',
+            '',
+            'Markdown-in, URL-out — the publishing layer for humans and agents.',
+            '',
+            '## The loop',
+            '',
+            'An agent writes, a human comments in the margin, the page updates. **Bold**, `inline code`, and [a link](#) read as part of the prose.',
+            '',
+            '> A document is a conversation that hasn’t realized it’s interactive yet.',
+            '',
+            '- Write the markdown',
+            '- Publish to a URL',
+            '- Let readers respond',
+          ].join(NL),
+        },
+      ],
+    },
+    kanban: {
+      label: 'Kanban',
+      view: 'kanban',
+      files: [
+        {
+          name: 'roadmap.md',
+          content: [
+            '---',
+            'view: kanban',
+            'title: Q2 Roadmap',
+            'labels:',
+            '  feature: "#3b82f6"',
+            '  bug: "#ef4444"',
+            '---',
+            '## Backlog',
+            '### SEO + meta tags {#c1} [feature]',
+            'Research keywords, update meta.',
+            '## In Progress',
+            '### Fix login redirect {#c2} [bug]',
+            'Token expires on redirect.',
+            '## Done',
+            '### Ship folder view {#c3} [feature]',
+            'Published.',
+          ].join(NL),
+        },
+      ],
+    },
+    slides: {
+      label: 'Deck',
+      view: 'slides',
+      files: [
+        {
+          name: 'deck.md',
+          content: [
+            '---',
+            'view: slides',
+            'title: Agents that publish',
+            '---',
+            '# Agents that *publish*',
+            '',
+            'The publishing layer for humans and agents.',
+            '',
+            '---',
+            '',
+            '## The loop',
+            '',
+            '1. Agent writes markdown',
+            '2. Publishes to a URL',
+            '3. Humans comment',
+            '4. Agent revises in place',
+            '',
+            '---',
+            '',
+            '## Try it',
+            '',
+            '```bash',
+            'npx vibe-pub publish report.md',
+            '```',
+          ].join(NL),
+        },
+      ],
+    },
+    folder: {
+      label: 'Folder',
+      files: [
+        { name: 'onboarding-guide.md', content: '# Onboarding guide' + NL + NL + 'How to get started.' },
+        {
+          name: 'sprint-board.md',
+          content: ['## Todo', '### Task {#t1}', '- [ ] a', '## Done', '### Done {#d1}', '- [x] b'].join(NL),
+        },
+        { name: 'investor-deck.md', content: ['---', 'view: slides', '---', '# Slide one', '', '---', '', '## Slide two'].join(NL) },
+      ],
+    },
+    collection: {
+      label: 'Collection',
+      files: [
+        {
+          name: '_collection.md',
+          content: [
+            '---',
+            'title: Agents Handbook',
+            'description: A field guide to publishing with agents.',
+            '---',
+            '## Part One',
+            '- intro.md',
+            '- basics.md',
+            '## Part Two',
+            '- roadmap.md',
+          ].join(NL),
+        },
+        { name: 'intro.md', content: '# Introduction' + NL + NL + 'Welcome to the handbook.' },
+        { name: 'basics.md', content: '# The basics' + NL + NL + 'Markdown in, URL out.' },
+        {
+          name: 'roadmap.md',
+          content: ['## Backlog', '### Research {#r1}', '- [ ] survey', '## Done', '### Ship it {#s1}', '- [x] launched'].join(NL),
+        },
+      ],
+    },
+  };
+
+  function loadExample(key: string) {
+    const ex = EXAMPLES[key];
+    if (!ex) return;
+    pasteText = '';
+    if (ex.view) viewOverride = ex.view;
+    files = ex.files.map((f) => ({ ...f }));
+    inputOpen = false;
+  }
 
   // ── File handling ───────────────────────────────────────────────
   function readFiles(list: FileList | File[]) {
@@ -187,8 +332,8 @@
   >
     <div class="pg-input-head">
       <span
-        >Paste markdown, or upload <code>.md</code> file(s) — multiple files become a folder;
-        include a <code>_collection.md</code> for a collection.</span
+        >Paste or upload one <code>.md</code> for doc/kanban/slides. Upload multiple files for
+        folder view; add a <code>_collection.md</code> manifest to get collection view.</span
       >
       <div class="pg-input-actions">
         <label class="pg-upload"
@@ -202,6 +347,17 @@
         >
         {#if files.length || pasteText}<button class="pg-btn" onclick={clearAll}>clear</button>{/if}
       </div>
+    </div>
+    <div class="pg-examples">
+      <span class="pg-ex-label">single file</span>
+      {#each Object.entries(EXAMPLES).filter(([k]) => !['folder','collection'].includes(k)) as [key, ex]}
+        <button class="pg-ex-btn" onclick={() => loadExample(key)}>{ex.label}</button>
+      {/each}
+      <span class="pg-ex-sep">·</span>
+      <span class="pg-ex-label">multi-file</span>
+      {#each Object.entries(EXAMPLES).filter(([k]) => ['folder','collection'].includes(k)) as [key, ex]}
+        <button class="pg-ex-btn" onclick={() => loadExample(key)}>{ex.label}</button>
+      {/each}
     </div>
     {#if warning}<p class="pg-warn">{warning}</p>{/if}
     {#if files.length}
@@ -226,8 +382,7 @@
 {/if}
 
 <!-- ── Preview stage ─────────────────────────────────────────────── -->
-<div class:dark>
-  <div class="pg-stage theme-{theme}">
+<div class="pg-stage theme-{theme}">
     {#if !result || result.mode === 'empty'}
       <div class="pg-empty">Paste markdown or upload a file to preview it.</div>
     {:else if result.mode === 'folder'}
@@ -257,7 +412,6 @@
     {:else}
       <DocView bind:comments={localComments} html={result.html} title={result.title} pageId="pg" />
     {/if}
-  </div>
 </div>
 
 <style>
@@ -341,6 +495,9 @@
     padding: 1px 5px;
     border-radius: 4px;
   }
+  :global(.dark) .pg-input-head code {
+    background: rgba(255, 255, 255, 0.08);
+  }
   .pg-input-actions {
     display: flex;
     gap: 8px;
@@ -358,11 +515,53 @@
   .pg-upload:hover {
     background: rgba(0, 0, 0, 0.04);
   }
+  :global(.dark) .pg-upload:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
   .pg-warn {
     color: var(--error, #ef4444);
     font-family: var(--font-mono);
     font-size: 12px;
     margin: 0 0 8px;
+  }
+  .pg-examples {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 12px;
+  }
+  .pg-ex-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-right: 4px;
+  }
+  .pg-ex-sep {
+    color: var(--text-tertiary);
+    margin: 0 6px;
+    opacity: 0.5;
+  }
+  .pg-ex-btn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-hover, rgba(0, 0, 0, 0.12));
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pg-ex-btn:hover {
+    color: var(--text-primary);
+    background: rgba(0, 0, 0, 0.04);
+    border-color: var(--text-tertiary);
+  }
+  :global(.dark) .pg-ex-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
   }
   .pg-chips {
     display: flex;
@@ -379,6 +578,9 @@
     align-items: center;
     gap: 6px;
     color: var(--text-secondary);
+  }
+  :global(.dark) .pg-chip {
+    background: rgba(255, 255, 255, 0.07);
   }
   .pg-chip button {
     border: none;
