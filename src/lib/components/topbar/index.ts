@@ -27,5 +27,6 @@ export {
   closeReaderAppearancePanel,
   kanbanReaderBoardFullwidth,
   openReaderAppearancePanel,
+  playgroundPanelOpen,
   readerAppearancePanelOpen,
 } from './stores';

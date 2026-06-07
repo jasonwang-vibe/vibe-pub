@@ -13,3 +13,6 @@ export function openReaderAppearancePanel() {
 export function closeReaderAppearancePanel() {
   readerAppearancePanelOpen.set(false);
 }
+
+/** Playground input panel open state — shared between Header toggle and page. */
+export const playgroundPanelOpen = writable(false);

@@ -13,6 +13,7 @@
     closeReaderAppearancePanel,
     kanbanReaderBoardFullwidth,
     openReaderAppearancePanel,
+    playgroundPanelOpen,
     readerAppearancePanelOpen,
   } from '$lib/components/topbar';
   import Share from '$lib/components/topbar/Share.svelte';
@@ -589,6 +590,38 @@
             stroke="currentColor"
             stroke-width="2"
             aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg
+          >
+        </button>
+      {/if}
+
+      {#if pathname === '/view-playground'}
+        <button
+          type="button"
+          class="top-btn icon-only"
+          class:active={$playgroundPanelOpen}
+          onclick={() => playgroundPanelOpen.update((v) => !v)}
+          title={$playgroundPanelOpen ? 'Close input panel' : 'Open input panel'}
+          aria-expanded={$playgroundPanelOpen}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+            ><rect x="3" y="3" width="7" height="7" rx="1" /><rect
+              x="14"
+              y="3"
+              width="7"
+              height="7"
+              rx="1"
+            /><rect x="3" y="14" width="7" height="7" rx="1" /><rect
+              x="14"
+              y="14"
+              width="7"
+              height="7"
+              rx="1"
+            /></svg
           >
         </button>
       {/if}

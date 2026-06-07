@@ -10,12 +10,28 @@
   import FolderView from '$lib/templates/folder/FolderView.svelte';
   import PlaygroundCollection from './PlaygroundCollection.svelte';
   import { PLAYGROUND_COLLECTION_SLUG } from '$lib/templates/collection/playground-slug';
-  import { kanbanReaderBoardFullwidth } from '$lib/components/topbar';
+  import { kanbanReaderBoardFullwidth, playgroundPanelOpen } from '$lib/components/topbar';
 
   interface UFile {
     name: string;
     content: string;
   }
+
+  interface PubPage {
+    id: string;
+    title: string | null;
+    view: string;
+    theme: string;
+    created: string;
+    markdown: string;
+    canonicalPath: string;
+  }
+
+  interface Props {
+    data: { pages: PubPage[] };
+  }
+
+  let { data }: Props = $props();
 
   interface HistoryItem {
     name: string;
@@ -32,9 +48,14 @@
   let theme = $state('default');
   let dark = $state(false);
   let viewOverride = $state('doc');
-  let panelOpen = $state(false);
   let dragging = $state(false);
   let warning = $state('');
+
+  // Panel open state lives in the shared store so Header can toggle it
+  let panelOpen = $derived($playgroundPanelOpen);
+  function setPanelOpen(v: boolean) {
+    playgroundPanelOpen.set(v);
+  }
   let pgHistory = $state<HistoryItem[]>([]);
 
   let result = $state<any>(null);
@@ -66,7 +87,17 @@
   function loadHistoryItem(item: HistoryItem) {
     files = [{ name: item.name, content: item.content }];
     pasteText = '';
-    panelOpen = false;
+    setPanelOpen(false);
+    schedulePreview(true);
+  }
+
+  function loadPublishedPage(p: PubPage) {
+    const name = (p.title ?? 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.md';
+    files = [{ name, content: p.markdown }];
+    pasteText = '';
+    viewOverride = p.view ?? 'doc';
+    theme = p.theme ?? 'default';
+    setPanelOpen(true);
     schedulePreview(true);
   }
 
@@ -168,7 +199,7 @@
   $effect(() => {
     if (!browser || !panelOpen) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') panelOpen = false;
+      if (e.key === 'Escape') setPanelOpen(false);
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -226,10 +257,9 @@
   }
   function selectFile(name: string) {
     activeFile = activeFile === name ? null : name;
-    panelOpen = false;
+    setPanelOpen(false);
   }
 
-  let localComments = $state([]);
   const modeLabel = $derived(
     result ? (result.mode === 'single' ? `${result.view}` : result.mode) : 'empty'
   );
@@ -275,11 +305,6 @@
 
 <svelte:head><title>Reader playground · vibe.pub</title></svelte:head>
 
-<!-- ── Backdrop ──────────────────────────────────────────────────── -->
-{#if panelOpen}
-  <div class="pg-backdrop" onclick={() => (panelOpen = false)} aria-hidden="true"></div>
-{/if}
-
 <!-- ── Right panel ───────────────────────────────────────────────── -->
 <div
   class="pg-panel"
@@ -300,7 +325,7 @@
       <span class="panel-title">reader <strong>playground</strong></span>
       <span class="panel-mode">{loading ? 'rendering…' : modeLabel}</span>
     </div>
-    <button class="panel-close" onclick={() => (panelOpen = false)} aria-label="Close panel">
+    <button class="panel-close" onclick={() => setPanelOpen(false)} aria-label="Close panel">
       <svg
         width="14"
         height="14"
@@ -347,8 +372,6 @@
       <span class="panel-ex-muted">folder &amp; collection auto-detected</span>
     </div>
   </div>
-
-  <div class="panel-sep"></div>
 
   {#if warning}
     <div class="panel-section"><p class="panel-warn">{warning}</p></div>
@@ -485,54 +508,40 @@
   {/if}
 </div>
 
-<!-- ── FAB toggle ─────────────────────────────────────────────────── -->
-<button
-  class="pg-fab"
-  class:active={panelOpen}
-  onclick={() => (panelOpen = !panelOpen)}
-  aria-label={panelOpen ? 'Close input panel' : 'Open input panel'}
-  aria-expanded={panelOpen}
->
-  {#if panelOpen}
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg
-    >
-  {:else}
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      ><rect x="3" y="3" width="7" height="7" rx="1" /><rect
-        x="14"
-        y="3"
-        width="7"
-        height="7"
-        rx="1"
-      /><rect x="3" y="14" width="7" height="7" rx="1" /><rect
-        x="14"
-        y="14"
-        width="7"
-        height="7"
-        rx="1"
-      /></svg
-    >
-  {/if}
-</button>
-
 <!-- ── Preview stage ─────────────────────────────────────────────── -->
-<div class="pg-stage theme-{theme}">
+<div class="pg-stage theme-{theme}" class:panel-open={panelOpen}>
   {#if !result || result.mode === 'empty'}
     <div class="pg-empty">
-      <p>Paste markdown or upload a file to preview it.</p>
-      <button class="pg-empty-btn" onclick={() => (panelOpen = true)}>Open input panel →</button>
+      {#if data.pages.length > 0}
+        <div class="pg-pages">
+          <div class="pg-pages-head">Published pages</div>
+          <div class="pg-pages-list">
+            {#each data.pages as p (p.id)}
+              <button class="pg-page-row" onclick={() => loadPublishedPage(p)}>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /></svg
+                >
+                <span class="pg-page-title">{p.title ?? 'Untitled'}</span>
+                <span class="pg-page-view">{p.view}</span>
+              </button>
+            {/each}
+          </div>
+          <p class="pg-empty-hint">
+            Or <button class="pg-link-btn" onclick={() => setPanelOpen(true)}
+              >upload your own file →</button
+            >
+          </p>
+        </div>
+      {:else}
+        <p>Paste markdown or upload a file to preview it.</p>
+        <button class="pg-empty-btn" onclick={() => setPanelOpen(true)}>Open input panel →</button>
+      {/if}
     </div>
   {:else if result.mode === 'folder'}
     <FolderView files={result.files} />
@@ -544,20 +553,20 @@
     <KanbanView
       boardFullwidth={$kanbanReaderBoardFullwidth}
       markdown={result.markdown}
-      pageId="pg"
+      pageId=""
       comments={[]}
       initialColumns={result.kanban.columns}
       initialLabels={result.kanban.labels}
       isOwner={false}
     />
   {:else if result.view === 'slides'}
-    <SlidesView slides={result.slides} title={result.title} comments={[]} pageId="pg" />
+    <SlidesView slides={result.slides} title={result.title} comments={[]} pageId="" />
   {:else if result.view === 'changelog'}
-    <ChangelogView releases={result.releases} title={result.title} comments={[]} pageId="pg" />
+    <ChangelogView releases={result.releases} title={result.title} comments={[]} pageId="" />
   {:else if result.view === 'timeline'}
-    <TimelineView sections={result.sections} title={result.title} comments={[]} pageId="pg" />
+    <TimelineView sections={result.sections} title={result.title} comments={[]} pageId="" />
   {:else if result.view === 'dashboard'}
-    <DashboardView sections={result.sections} title={result.title} comments={[]} pageId="pg" />
+    <DashboardView sections={result.sections} title={result.title} comments={[]} pageId="" />
   {:else}
     <div class="pg-doc-layout">
       <div class="pg-doc-main">
@@ -596,12 +605,11 @@
         </header>
         <article class="pg-doc-article">
           <DocView
-            bind:comments={localComments}
             bind:outlineVisible={pgDocOutlineVisible}
             bind:hasToc={pgDocHasToc}
             html={pgDocHtml}
             title={null}
-            pageId="pg"
+            pageId=""
           />
         </article>
       </div>
@@ -615,12 +623,19 @@
     background: var(--bg);
     color: var(--text-primary);
     min-height: calc(100vh - 56px);
+    transition: margin-right 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @media (min-width: 641px) {
+    .pg-stage.panel-open {
+      margin-right: min(400px, 100vw);
+    }
   }
 
   .pg-empty {
-    max-width: 480px;
-    margin: 100px auto;
-    text-align: center;
+    max-width: 560px;
+    margin: 60px auto;
+    padding: 0 24px;
     font-family: var(--font-prose);
     color: var(--text-tertiary);
     display: flex;
@@ -651,59 +666,99 @@
     border-color: var(--text-tertiary);
   }
 
-  /* ── FAB ── */
-  .pg-fab {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    width: 44px;
-    height: 44px;
-    border-radius: 999px;
-    background: var(--text-primary);
-    color: var(--bg);
-    border: none;
-    cursor: pointer;
-    z-index: 100;
+  /* ── Published pages list (empty state) ── */
+  .pg-pages {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pg-pages-head {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 0 4px;
+  }
+
+  .pg-pages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .pg-page-row {
     display: flex;
     align-items: center;
-    justify-content: center;
-    box-shadow:
-      0 4px 16px rgba(0, 0, 0, 0.2),
-      0 1px 4px rgba(0, 0, 0, 0.1);
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
     transition:
-      transform 0.15s,
-      box-shadow 0.15s,
-      background 0.15s;
+      background 0.12s,
+      border-color 0.12s;
+    color: var(--text-primary);
   }
 
-  .pg-fab:hover {
-    transform: scale(1.08);
-    box-shadow:
-      0 6px 20px rgba(0, 0, 0, 0.25),
-      0 2px 6px rgba(0, 0, 0, 0.12);
+  .pg-page-row:hover {
+    background: var(--surface);
+    border-color: var(--text-tertiary);
   }
 
-  .pg-fab.active {
-    background: var(--text-secondary);
+  .pg-page-row svg {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
   }
 
-  /* ── Backdrop ── */
-  .pg-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 150;
-    background: rgba(0, 0, 0, 0.18);
-    backdrop-filter: blur(1px);
-    animation: backdrop-in 200ms ease;
+  .pg-page-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-prose);
+    font-size: 14px;
   }
 
-  @keyframes backdrop-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+  .pg-page-view {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    padding: 2px 7px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  .pg-empty-hint {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text-tertiary);
+    margin: 0;
+    font-style: normal;
+    text-align: center;
+  }
+
+  .pg-link-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .pg-link-btn:hover {
+    color: var(--text-primary);
   }
 
   /* ── Panel ── */
@@ -939,7 +994,8 @@
 
   /* Input area */
   .panel-input-area {
-    padding: 0 20px 14px;
+    border-top: 1px solid var(--border);
+    padding: 24px 20px 14px;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -1333,13 +1389,6 @@
 
   /* ── Mobile ── */
   @media (max-width: 640px) {
-    .pg-fab {
-      bottom: 16px;
-      right: 16px;
-      width: 40px;
-      height: 40px;
-    }
-
     .pg-panel {
       width: 100vw;
       border-left: none;
