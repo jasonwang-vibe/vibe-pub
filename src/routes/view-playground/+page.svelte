@@ -1152,19 +1152,48 @@
 
   /* ── Doc layout (mirrors production PublishedPage .doc-layout + .doc-main) ── */
   .pg-doc-layout {
+    display: grid;
+    grid-template-columns: 1fr;
     max-width: 1280px;
     margin: 0 auto;
-    padding: 40px 20px 80px;
+    padding: 64px 32px 120px;
     box-sizing: border-box;
   }
 
-  @media (min-width: 640px) {
+  @media (max-width: 959px) {
     .pg-doc-layout {
-      padding: 64px 32px 120px;
+      max-width: 680px;
+      padding: 48px 24px 80px;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .pg-doc-layout {
+      padding: 24px 20px 80px;
+    }
+
+    .pg-doc-hero-title {
+      font-size: 36px;
+    }
+
+    .pg-doc-lede {
+      font-size: 17px;
+    }
+  }
+
+  @media (min-width: 640px) and (max-width: 959px) {
+    .pg-doc-hero-title {
+      font-size: 48px;
+    }
+
+    .pg-doc-lede {
+      font-size: 18px;
     }
   }
 
   .pg-doc-main {
+    min-width: 0;
+    width: 100%;
     max-width: 680px;
     margin: 0 auto;
   }
