@@ -599,6 +599,7 @@
           type="button"
           class="top-btn icon-only"
           class:active={$playgroundPanelOpen}
+          data-pg-panel-toggle
           onclick={() => playgroundPanelOpen.update((v) => !v)}
           title={$playgroundPanelOpen ? 'Close input panel' : 'Open input panel'}
           aria-expanded={$playgroundPanelOpen}
@@ -608,20 +609,19 @@
             fill="none"
             stroke="currentColor"
             stroke-width="2"
+            stroke-linecap="round"
             aria-hidden="true"
-            ><rect x="3" y="3" width="7" height="7" rx="1" /><rect
-              x="14"
-              y="3"
-              width="7"
-              height="7"
-              rx="1"
-            /><rect x="3" y="14" width="7" height="7" rx="1" /><rect
-              x="14"
-              y="14"
-              width="7"
-              height="7"
-              rx="1"
-            /></svg
+            ><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line
+              x1="4"
+              y1="18"
+              x2="20"
+              y2="18"
+            /><circle cx="9" cy="6" r="2" fill="var(--bg)" /><circle
+              cx="15"
+              cy="12"
+              r="2"
+              fill="var(--bg)"
+            /><circle cx="8" cy="18" r="2" fill="var(--bg)" /></svg
           >
         </button>
       {/if}

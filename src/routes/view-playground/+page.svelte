@@ -195,14 +195,24 @@
     return () => document.documentElement.classList.remove('dark');
   });
 
-  // ── Close panel on Escape ────────────────────────────────────────
+  // ── Close panel on Escape or click outside ───────────────────────
   $effect(() => {
     if (!browser || !panelOpen) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setPanelOpen(false);
     }
+    function onPointerDown(e: PointerEvent) {
+      const t = e.target as HTMLElement;
+      // Ignore clicks inside the panel itself or on the header toggle button
+      if (t.closest?.('.pg-panel') || t.closest?.('[data-pg-panel-toggle]')) return;
+      setPanelOpen(false);
+    }
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+    };
   });
 
   // ── File handling ────────────────────────────────────────────────
@@ -622,7 +632,8 @@
   .pg-stage {
     background: var(--bg);
     color: var(--text-primary);
-    min-height: calc(100vh - 56px);
+    min-height: calc(100dvh - 56px);
+    display: flow-root;
     transition: margin-right 240ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
