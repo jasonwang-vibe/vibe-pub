@@ -496,6 +496,7 @@
 
   .feed-item:nth-child(3n) {
     border-right: none;
+    padding-left: 24px;
     padding-right: 0;
   }
   .feed-item:nth-child(3n + 1) {
