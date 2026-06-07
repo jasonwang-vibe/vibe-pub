@@ -315,7 +315,7 @@
 </script>
 
 <svelte:head>
-  <title>@{profileUser.username} — vibe-pub.sandbox.dev</title>
+  <title>@{profileUser.username} — vibe.pub</title>
 </svelte:head>
 
 {#if isOwner}

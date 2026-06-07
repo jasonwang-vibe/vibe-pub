@@ -36,7 +36,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
       agent_published: number;
     }>();
 
-  const baseUrl = platform.env.BASE_URL ?? 'https://vibe-pub.sandbox.dev';
+  const baseUrl = platform.env.BASE_URL ?? 'https://vibe.pub';
   return json(
     collections.results.map((c) => ({
       ...c,
@@ -238,7 +238,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
     ? await insertUngroupedPages(db, id, page_slugs, pageMap)
     : [];
 
-  const baseUrl = platform.env.BASE_URL ?? 'https://vibe-pub.sandbox.dev';
+  const baseUrl = platform.env.BASE_URL ?? 'https://vibe.pub';
   return json(
     {
       id,

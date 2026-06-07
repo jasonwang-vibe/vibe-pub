@@ -34,7 +34,7 @@
 {/snippet}
 
 <AuthSignInPanel
-  pageTitle="Authorize CLI — vibe-pub.sandbox.dev"
+  pageTitle="Authorize CLI — vibe.pub"
   titleBefore="Authorize "
   titleEm="CLI"
   subtitle={data.user ? '' : 'Sign in, then approve access for your terminal'}

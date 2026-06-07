@@ -199,7 +199,7 @@
   <div class="site-header-blur" aria-hidden="true"></div>
   <nav class="topbar" aria-label="Site">
     <div class="top-left">
-      <a href={user ? `/@${user.username}` : '/'} class="brand">vibe-pub.<em>sandbox.dev</em></a>
+      <a href={user ? `/@${user.username}` : '/'} class="brand">vibe.<em>pub</em></a>
       {#if pathname !== '/'}
         <div class="crumb-meta">
           <span class="slug">{crumb}</span>

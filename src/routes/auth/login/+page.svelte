@@ -6,7 +6,7 @@
 </script>
 
 <AuthSignInPanel
-  pageTitle="Sign in — vibe-pub.sandbox.dev"
+  pageTitle="Sign in — vibe.pub"
   titleBefore="Sign "
   titleEm="in"
   subtitle="Continue with your account"

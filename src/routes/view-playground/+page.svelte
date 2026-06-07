@@ -319,7 +319,7 @@
   );
 </script>
 
-<svelte:head><title>Reader playground · vibe-pub.sandbox.dev</title></svelte:head>
+<svelte:head><title>Reader playground · vibe.pub</title></svelte:head>
 
 <!-- ── Top control bar ───────────────────────────────────────────── -->
 <div class="pg-bar">

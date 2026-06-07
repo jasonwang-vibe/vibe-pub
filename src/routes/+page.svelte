@@ -11,19 +11,19 @@
 </script>
 
 <svelte:head>
-  <title>vibe-pub.sandbox.dev</title>
+  <title>vibe.pub sandbox</title>
   <meta
     name="description"
     content="Pipe markdown in, get a URL out. Readers leave comments, agents read them, pages update. The feedback loop closes in minutes."
   />
-  <meta property="og:title" content="vibe-pub.sandbox.dev — the publishing layer for AI agents" />
+  <meta property="og:title" content="vibe.pub — the publishing layer for AI agents" />
   <meta
     property="og:description"
     content="Pipe markdown in, get a URL out. The feedback loop closes in minutes, not days."
   />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://vibe-pub.sandbox.dev" />
-  <meta property="og:site_name" content="vibe-pub.sandbox.dev" />
+  <meta property="og:url" content="https://vibe.pub" />
+  <meta property="og:site_name" content="vibe.pub" />
 </svelte:head>
 
 <div class="landing">

@@ -47,7 +47,7 @@ export const actions: Actions = {
     });
 
     const canonicalPath = buildCanonicalPath(page);
-    const baseUrl = platform.env.BASE_URL ?? 'https://vibe-pub.sandbox.dev';
+    const baseUrl = platform.env.BASE_URL ?? 'https://vibe.pub';
     const url = `${baseUrl}${canonicalPath}`;
 
     throw redirect(

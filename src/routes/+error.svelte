@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-  <title>{$page.status} — vibe-pub.sandbox.dev</title>
+  <title>{$page.status} — vibe.pub</title>
 </svelte:head>
 
 <div class="error-page">

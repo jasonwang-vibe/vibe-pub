@@ -89,7 +89,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
     console.error('Initial version snapshot failed:', e);
   }
 
-  const baseUrl = platform.env.BASE_URL ?? 'https://vibe-pub.sandbox.dev';
+  const baseUrl = platform.env.BASE_URL ?? 'https://vibe.pub';
   const url = `${baseUrl}${buildCanonicalPath(page)}`;
 
   return json({ id: page.id, slug: page.slug, url }, { status: 201 });
@@ -101,7 +101,7 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
   const db = getDb(platform);
 
   const pages = await getPagesByUser(db, locals.user.id);
-  const baseUrl = platform.env.BASE_URL ?? 'https://vibe-pub.sandbox.dev';
+  const baseUrl = platform.env.BASE_URL ?? 'https://vibe.pub';
 
   return json(
     pages.map((p) => ({
