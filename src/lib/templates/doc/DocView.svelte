@@ -234,14 +234,6 @@
     node.querySelectorAll('pre').forEach((pre) => {
       pre.style.position = 'relative';
       const code = pre.querySelector('code');
-      const langClass = code?.className.match(/language-(\w+)/);
-      const lang = langClass?.[1] ?? pre.getAttribute('data-language');
-      if (lang) {
-        const label = document.createElement('span');
-        label.className = 'code-lang';
-        label.textContent = lang;
-        pre.appendChild(label);
-      }
       const btn = document.createElement('button');
       btn.className = 'code-copy';
       btn.textContent = 'Copy';
