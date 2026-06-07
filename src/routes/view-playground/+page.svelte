@@ -624,7 +624,9 @@
   {:else if result.view === 'dashboard'}
     <DashboardView sections={result.sections} title={result.title} comments={[]} pageId="pg" />
   {:else}
-    <DocView bind:comments={localComments} html={result.html} title={result.title} pageId="pg" />
+    <div class="pg-doc-wrap">
+      <DocView bind:comments={localComments} html={result.html} title={result.title} pageId="pg" />
+    </div>
   {/if}
 </div>
 
@@ -1104,6 +1106,20 @@
 
   .hist-del:hover {
     color: #ef4444;
+  }
+
+  /* ── Doc wrapper (adds padding the DocView itself lacks) ── */
+  .pg-doc-wrap {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 48px 24px 100px;
+    box-sizing: border-box;
+  }
+
+  @media (min-width: 640px) {
+    .pg-doc-wrap {
+      padding: 64px 32px 120px;
+    }
   }
 
   /* ── Mobile ── */
