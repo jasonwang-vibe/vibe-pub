@@ -118,8 +118,17 @@
     });
   }
 
+  let _outlineSpy: { destroy(): void } | undefined;
+
   function applyDocEnhancements(node: HTMLElement, o: EnhanceParams) {
     stripDocEnhancements(node);
+    _outlineSpy?.destroy();
+    _outlineSpy = undefined;
+    addHeadingIds(node);
+    activeTocId = '';
+    void tick().then(() => {
+      _outlineSpy = setupScrollSpy(node) ?? undefined;
+    });
 
     node.querySelectorAll('pre').forEach((pre) => {
       pre.style.position = 'relative';
@@ -198,6 +207,149 @@
     };
   }
 
+  // ── Outline / TOC ────────────────────────────────────────────────────────
+  interface TocItem {
+    id: string;
+    text: string;
+    level: number;
+  }
+
+  function slugifyHeadingText(text: string): string {
+    const t = text
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    return t || 'section';
+  }
+
+  function finalizeOutlineHeadings(items: TocItem[]): TocItem[] {
+    const used = new Set<string>();
+    return items.map((item) => {
+      const base = item.id?.trim() ? item.id.trim() : slugifyHeadingText(item.text);
+      let candidate = base || 'section';
+      let n = 2;
+      while (used.has(candidate)) {
+        candidate = `${base}-${n}`;
+        n++;
+      }
+      used.add(candidate);
+      return { level: item.level, text: item.text, id: candidate };
+    });
+  }
+
+  let toc = $derived.by((): TocItem[] => {
+    if (!html) return [];
+    const items: TocItem[] = [];
+    const regex = /<h([2-3])[^>]*id="([^"]*)"[^>]*>(.*?)<\/h[2-3]>/gi;
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+      items.push({
+        level: parseInt(match[1]),
+        id: match[2],
+        text: match[3].replace(/<[^>]*>/g, ''),
+      });
+    }
+    return finalizeOutlineHeadings(items);
+  });
+
+  let tocFromText = $derived.by((): TocItem[] => {
+    if (toc.length > 0 || !html) return toc;
+    const items: TocItem[] = [];
+    const regex = /<h([2-3])[^>]*>(.*?)<\/h[2-3]>/gi;
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+      const text = match[2].replace(/<[^>]*>/g, '');
+      items.push({ level: parseInt(match[1]), id: slugifyHeadingText(text), text });
+    }
+    return finalizeOutlineHeadings(items);
+  });
+
+  let activeTocId = $state('');
+
+  const OUTLINE_VISIBLE_KEY = 'vibe-reader-outline-visible';
+  const OUTLINE_WIDE_MQ = '(min-width: 1280px)';
+
+  function readOutlineVisiblePref(): boolean {
+    if (!browser) return true;
+    const v = localStorage.getItem(OUTLINE_VISIBLE_KEY);
+    return v !== '0' && v !== 'false';
+  }
+
+  let outlineEnabledWide = $state(true);
+  let outlineOpenNarrow = $state(false);
+  let viewportWide = $state(false);
+
+  $effect(() => {
+    if (!browser) return;
+    const mq = window.matchMedia(OUTLINE_WIDE_MQ);
+    const sync = () => {
+      const wide = mq.matches;
+      if (viewportWide && !wide) outlineOpenNarrow = false;
+      if (!viewportWide && wide) outlineEnabledWide = readOutlineVisiblePref();
+      viewportWide = wide;
+    };
+    outlineEnabledWide = readOutlineVisiblePref();
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  });
+
+  function setOutlineVisible(visible: boolean) {
+    if (viewportWide) {
+      outlineEnabledWide = visible;
+      if (browser) localStorage.setItem(OUTLINE_VISIBLE_KEY, visible ? '1' : '0');
+    } else {
+      outlineOpenNarrow = visible;
+    }
+  }
+
+  let showOutlinePanel = $derived(
+    tocFromText.length > 0 && (viewportWide ? outlineEnabledWide : outlineOpenNarrow)
+  );
+
+  function setupScrollSpy(node: HTMLElement) {
+    if (!browser) return;
+    const headings = node.querySelectorAll('h2[id], h3[id]');
+    if (headings.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting && e.target.id);
+        if (visible.length === 0) return;
+        const best = visible.reduce((a, e) =>
+          e.boundingClientRect.top < a.boundingClientRect.top ? e : a
+        );
+        activeTocId = best.target.id;
+      },
+      { rootMargin: '-80px 0px -70% 0px' }
+    );
+    headings.forEach((h) => observer.observe(h));
+    return {
+      destroy() {
+        observer.disconnect();
+      },
+    };
+  }
+
+  function addHeadingIds(node: HTMLElement) {
+    const headings = node.querySelectorAll('h2, h3');
+    const used = new Set<string>();
+    headings.forEach((h) => {
+      const el = h as HTMLElement;
+      const text = (el.textContent ?? '').trim();
+      const base = el.id?.trim() ? el.id.trim() : slugifyHeadingText(text);
+      let candidate = base || 'section';
+      let n = 2;
+      while (used.has(candidate)) {
+        candidate = `${base}-${n}`;
+        n++;
+      }
+      used.add(candidate);
+      el.id = candidate;
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   /** Reader_Doc.html — reading progress bar */
   let readingProgressPct = $state(0);
 
@@ -225,7 +377,40 @@
   <div class="doc-reading-progress-fill" style="width: {readingProgressPct}%"></div>
 </div>
 
-<div class="doc-wrap">
+{#if showOutlinePanel}
+  <div class="outline-panel">
+    <div class="outline-header">
+      <span class="outline-label">Outline</span>
+      <button
+        type="button"
+        class="outline-close"
+        onclick={() => setOutlineVisible(false)}
+        aria-label="Hide outline"
+      >
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg
+        >
+      </button>
+    </div>
+    <nav class="outline-nav">
+      {#each tocFromText as item (item.id)}
+        <a
+          href="#{item.id}"
+          class="outline-link"
+          class:outline-h3={item.level === 3}
+          class:outline-active={activeTocId === item.id}>{item.text}</a
+        >
+      {/each}
+    </nav>
+  </div>
+{/if}
+
+<div class="doc-wrap" class:has-outline={showOutlinePanel}>
   <article class="doc-view prose max-w-[var(--reader-measure)]" use:enhanceDoc={docEnhanceOpts}>
     {#if showTitle}
       <h1 class="doc-title">{title}</h1>
@@ -684,5 +869,105 @@
   }
   article.doc-view :global(li + li) {
     margin-top: 0.25em;
+  }
+
+  /* ── Outline panel ── */
+  .outline-panel {
+    position: fixed;
+    top: 80px;
+    left: 24px;
+    width: 220px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .outline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .outline-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  .outline-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    border-radius: 4px;
+    padding: 0;
+    transition: color 0.15s;
+  }
+
+  .outline-close:hover {
+    color: var(--text-primary);
+  }
+
+  .outline-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .outline-link {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--text-tertiary);
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 5px;
+    transition:
+      color 0.12s,
+      background 0.12s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .outline-link:hover {
+    color: var(--text-primary);
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  :global(.dark) .outline-link:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .outline-link.outline-h3 {
+    padding-left: 20px;
+    font-size: 12px;
+  }
+
+  .outline-link.outline-active {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  /* Push article right when outline is visible */
+  @media (min-width: 1280px) {
+    .doc-wrap.has-outline {
+      padding-left: calc(24px + 220px + 32px);
+    }
+  }
+
+  @media (max-width: 1279px) {
+    .outline-panel {
+      display: none;
+    }
   }
 </style>
