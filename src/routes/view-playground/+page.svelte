@@ -393,9 +393,16 @@
     return `${Math.max(1, Math.round(words / 200))} min read`;
   }
 
+  function extractLede(html: string): string {
+    const m = html.match(/<p[^>]*>(.*?)<\/p>/s);
+    if (!m) return '';
+    return m[1].replace(/<[^>]+>/g, '').trim();
+  }
+
   let pgDocHtml = $derived(
     result?.view === 'doc' ? stripLeadingH1(result.html ?? '', result.title) : ''
   );
+  let pgDocLede = $derived(result?.view === 'doc' ? extractLede(pgDocHtml) : '');
   let pgDocReadTime = $derived(result?.view === 'doc' ? calcReadTime(result.html ?? '') : '');
 </script>
 
@@ -648,9 +655,13 @@
     <div class="pg-doc-layout">
       <div class="pg-doc-main">
         <header class="pg-doc-header">
+          <div class="pg-doc-meta-url">playground preview</div>
           <h1 class="pg-doc-hero-title">{result.title ?? 'Untitled'}</h1>
+          {#if pgDocLede}
+            <p class="pg-doc-lede">{pgDocLede}</p>
+          {/if}
           <div class="pg-doc-byline">
-            <span class="pg-doc-readtime">{pgDocReadTime}</span>
+            <span>{pgDocReadTime}</span>
           </div>
         </header>
         <article class="pg-doc-article">
@@ -1158,9 +1169,16 @@
     margin: 0 auto;
   }
 
-  /* Article header — mirrors .doc-header / .doc-hero-title / .doc-lede / .doc-byline */
+  /* Article header — mirrors .doc-header / .doc-meta-url / .doc-hero-title / .doc-lede / .doc-byline */
   .pg-doc-header {
     margin-bottom: 0;
+  }
+
+  .pg-doc-meta-url {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-bottom: 28px;
   }
 
   .pg-doc-hero-title {
@@ -1173,6 +1191,15 @@
     margin: 0 0 20px;
   }
 
+  .pg-doc-lede {
+    font-family: var(--font-prose);
+    font-size: clamp(18px, 1.6vw, 21px);
+    line-height: 1.55;
+    color: var(--text-secondary);
+    margin: 0 0 20px;
+    font-weight: 400;
+  }
+
   .pg-doc-byline {
     display: flex;
     align-items: center;
@@ -1182,6 +1209,8 @@
     font-size: 12px;
     color: var(--text-tertiary);
     margin-bottom: 48px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
   }
 
   .pg-doc-article {
