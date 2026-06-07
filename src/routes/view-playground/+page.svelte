@@ -136,6 +136,11 @@
     if (activeFile && !files.some((f) => f.name === activeFile)) activeFile = null;
   });
 
+  // A `_collection.md` manifest makes the multi-file view a collection; otherwise
+  // multiple files render as a folder.
+  let hasManifest = $derived(files.some((f) => /(^|\/)_collection\.md$/i.test(f.name)));
+  let multiFileLabel = $derived(hasManifest ? 'collection' : 'folder');
+
   // ── Effective file payload ──────────────────────────────────────
   let payload = $derived.by<UFile[]>(() => {
     if (files.length) {
@@ -519,7 +524,19 @@
     </div>
     <div class="panel-view-row">
       <span class="panel-ex-label">multi-file</span>
-      <span class="panel-ex-muted">folder &amp; collection auto-detected</span>
+      {#if files.length > 1}
+        <button
+          class="panel-ex-btn"
+          class:active={!activeFile}
+          onclick={() => (activeFile = null)}
+          title="View all files together"
+        >
+          {multiFileLabel}
+        </button>
+        <span class="panel-ex-muted">auto-detected</span>
+      {:else}
+        <span class="panel-ex-muted">add 2+ files to view as a folder</span>
+      {/if}
     </div>
   </div>
 
