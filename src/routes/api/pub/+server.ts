@@ -90,9 +90,22 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
   }
 
   const baseUrl = platform.env.BASE_URL ?? 'https://vibe.pub';
-  const url = `${baseUrl}${buildCanonicalPath(page)}`;
+  const canonicalPath = buildCanonicalPath(page);
+  const url = `${baseUrl}${canonicalPath}`;
 
-  return json({ id: page.id, slug: page.slug, url }, { status: 201 });
+  return json(
+    {
+      id: page.id,
+      slug: page.slug,
+      url,
+      path: canonicalPath,
+      title: page.title ?? null,
+      view: page.view,
+      theme: page.theme,
+      created: page.created,
+    },
+    { status: 201 }
+  );
 };
 
 export const GET: RequestHandler = async ({ locals, platform }) => {

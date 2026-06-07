@@ -63,6 +63,11 @@
   let viewOverride = $state('doc');
   let dragging = $state(false);
   let warning = $state('');
+  let publishNotice = $state('');
+
+  // Sandbox pages shown in the empty state. Seeded from the server load; grows
+  // as uploads auto-publish so the list stays in sync without a reload.
+  let sandboxPages = $state<PubPage[]>(data.pages);
 
   // Panel open state lives in the shared store so Header can toggle it
   let panelOpen = $derived($playgroundPanelOpen);
@@ -279,7 +284,56 @@
     ).then((loaded) => {
       files = [...files, ...loaded];
       pushHistory(loaded);
+      void autoPublishFiles(loaded);
     });
+  }
+
+  // Auto-publish uploaded files to the sandbox so they behave like "Publish .md"
+  // — each becomes a real sandbox page (URL + listed) the moment it's uploaded.
+  async function autoPublishFiles(loaded: UFile[]) {
+    if (!browser || !loaded.length) return;
+    publishNotice = `Publishing ${loaded.length} file${loaded.length > 1 ? 's' : ''}…`;
+    let published = 0;
+    for (const f of loaded) {
+      if (!f.content.trim()) continue;
+      try {
+        const res = await fetch('/api/pub', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ markdown: f.content, theme }),
+        });
+        if (!res.ok) continue;
+        const p = (await res.json()) as {
+          id: string;
+          title: string | null;
+          view: string;
+          theme: string;
+          created: string;
+          path: string;
+        };
+        // Prepend to the sandbox list (newest first), de-duping by id.
+        sandboxPages = [
+          {
+            id: p.id,
+            title: p.title,
+            view: p.view,
+            theme: p.theme,
+            created: p.created,
+            markdown: f.content,
+            canonicalPath: p.path,
+          },
+          ...sandboxPages.filter((x) => x.id !== p.id),
+        ];
+        published++;
+      } catch {
+        // Network error — leave the file as a local-only preview.
+      }
+    }
+    publishNotice =
+      published > 0
+        ? `Published ${published} file${published > 1 ? 's' : ''} to the sandbox`
+        : 'Could not publish — showing local preview only';
+    setTimeout(() => (publishNotice = ''), 4000);
   }
 
   function onDrop(e: DragEvent) {
@@ -543,6 +597,9 @@
   {#if warning}
     <div class="panel-section"><p class="panel-warn">{warning}</p></div>
   {/if}
+  {#if publishNotice}
+    <div class="panel-section"><p class="panel-notice">{publishNotice}</p></div>
+  {/if}
 
   <!-- File list or paste textarea -->
   <div class="panel-input-area">
@@ -679,11 +736,11 @@
 <div class="pg-stage theme-{theme}">
   {#if !result || result.mode === 'empty'}
     <div class="pg-empty">
-      {#if data.pages.length > 0}
+      {#if sandboxPages.length > 0}
         <div class="pg-pages">
           <div class="pg-pages-head">Published pages</div>
           <div class="pg-pages-list">
-            {#each data.pages as p (p.id)}
+            {#each sandboxPages as p (p.id)}
               <button class="pg-page-row" onclick={() => loadPublishedPage(p)}>
                 <svg
                   width="12"
@@ -1226,6 +1283,13 @@
 
   .panel-warn {
     color: #ef4444;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    margin: 0 0 10px;
+  }
+
+  .panel-notice {
+    color: var(--text-secondary);
     font-family: var(--font-mono);
     font-size: 12px;
     margin: 0 0 10px;
