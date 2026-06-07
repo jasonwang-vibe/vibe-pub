@@ -50,6 +50,9 @@ export const actions: Actions = {
     const baseUrl = platform.env.BASE_URL ?? 'https://vibe-pub.sandbox.dev';
     const url = `${baseUrl}${canonicalPath}`;
 
-    throw redirect(303, `/published?path=${encodeURIComponent(canonicalPath)}&url=${encodeURIComponent(url)}`);
+    throw redirect(
+      303,
+      `/published?path=${encodeURIComponent(canonicalPath)}&url=${encodeURIComponent(url)}`
+    );
   },
 };
