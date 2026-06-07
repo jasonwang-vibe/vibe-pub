@@ -148,17 +148,36 @@
       return;
     }
     loading = true;
-    try {
+    const attempt = async () => {
       const res = await fetch('/api/preview', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ files: f, view: viewOverride }),
       });
-      const next = (await res.json()) as any;
+      const ct = res.headers.get('content-type') ?? '';
+      if (!res.ok || !ct.includes('application/json')) {
+        // A cold Worker isolate can briefly exceed CPU limits and return an HTML
+        // error page (CF 1102/503). Surface a clean error instead of a raw
+        // JSON-parse failure, and let the caller retry.
+        throw new Error(`server returned ${res.status}`);
+      }
+      return (await res.json()) as any;
+    };
+    try {
+      let next: any;
+      try {
+        next = await attempt();
+      } catch {
+        // One automatic retry — usually the second hit lands on a warm isolate.
+        await new Promise((r) => setTimeout(r, 350));
+        next = await attempt();
+      }
+      warning = '';
       if (next.mode === 'collection') collectionActiveId = '';
       result = next;
     } catch (e) {
-      warning = 'Preview failed: ' + (e instanceof Error ? e.message : 'unknown');
+      // Keep the last good preview on screen rather than blanking it.
+      warning = 'Preview failed — try again: ' + (e instanceof Error ? e.message : 'unknown');
     } finally {
       loading = false;
     }

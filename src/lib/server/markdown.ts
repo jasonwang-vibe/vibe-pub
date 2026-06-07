@@ -52,12 +52,25 @@ export function parseFrontmatter(raw: string): { data: Partial<PageFrontmatter>;
   return { data: data as Partial<PageFrontmatter>, content };
 }
 
+const CODE_FENCE_RE = /```(\w+)?\n([\s\S]*?)```/g;
+
 export async function renderMarkdown(md: string): Promise<string> {
+  // Building the Shiki highlighter (many langs + regex engine) is expensive and
+  // can exceed the Cloudflare Workers CPU budget on a cold isolate (error 1102 →
+  // HTML error page → broken JSON for callers). Only build it when there is
+  // actually a fenced code block to highlight; most docs have none.
+  const hasCodeBlock = /```/.test(md);
+
   let highlighter: Awaited<ReturnType<typeof createHighlighter>> | null = null;
-  try {
-    highlighter = await getHighlighter();
-  } catch {
-    // Shiki may fail in Workers (WASM loading issues) — fall back to plain code blocks
+  if (hasCodeBlock) {
+    try {
+      highlighter = await getHighlighter();
+    } catch {
+      // Shiki may fail in Workers (WASM loading issues, or a highlighter promise
+      // cached during a *different* request). Reset the cache so the next call
+      // rebuilds it, and fall back to plain code blocks for this render.
+      highlighterPromise = null;
+    }
   }
 
   const processor = unified()
@@ -69,7 +82,7 @@ export async function renderMarkdown(md: string): Promise<string> {
     .use(rehypeSlug)
     .use(rehypeStringify);
 
-  const highlighted = md.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
+  const highlighted = md.replace(CODE_FENCE_RE, (_, lang, code) => {
     const language = lang || 'text';
     if (highlighter) {
       try {
@@ -78,7 +91,9 @@ export async function renderMarkdown(md: string): Promise<string> {
           theme: 'github-dark',
         });
       } catch {
-        // fall through to plain rendering
+        // A cross-request highlighter can also throw here — drop the cache and
+        // fall through to plain rendering.
+        highlighterPromise = null;
       }
     }
     return `<pre><code class="language-${language}">${escapeHtml(code)}</code></pre>`;
