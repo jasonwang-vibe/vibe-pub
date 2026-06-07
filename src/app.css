@@ -129,6 +129,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    /* Stop the rubber-band overscroll that makes the sticky top bar bounce. */
+    overscroll-behavior-y: none;
   }
 
   body {

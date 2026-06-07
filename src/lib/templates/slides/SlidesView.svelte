@@ -200,6 +200,20 @@
     document.addEventListener('pointerdown', onPointerDown, true);
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
   });
+
+  // Entering/leaving fullscreen: reset transient chrome (overview, filmstrip,
+  // menus) so a previously-open filmstrip can't leak into the fullscreen deck.
+  $effect(() => {
+    if (!browser) return;
+    function onFsChange() {
+      overview = false;
+      filmstripOpen = false;
+      moreOpen = false;
+      sourceOpen = false;
+    }
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -570,6 +584,14 @@
     height: calc(100dvh - 56px);
     overflow: hidden;
     width: 100%;
+    /* Positioning context for the absolutely-positioned overview grid. */
+    position: relative;
+  }
+
+  /* In fullscreen there is no 56px site header to subtract. */
+  .slides-container:fullscreen {
+    height: 100vh;
+    background: var(--bg);
   }
 
   /* ── Progress bar ── */
@@ -677,7 +699,8 @@
     background: var(--bg);
     z-index: 20;
     overflow-y: auto;
-    padding: 32px 24px 48px;
+    /* Top padding clears the stage controls bar (overview / fit / more). */
+    padding: 64px 24px 48px;
   }
 
   .ov-grid {
@@ -699,6 +722,7 @@
   }
 
   .ov-thumb {
+    position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
     border-radius: 10px;
@@ -706,7 +730,7 @@
     border: 1.5px solid var(--border);
     overflow: hidden;
     transition: all 160ms ease;
-    padding: 12px 14px;
+    padding: 0;
   }
 
   .ov-cell:hover .ov-thumb {
@@ -719,11 +743,21 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-primary) 10%, transparent);
   }
 
+  /* Render the full slide content at slide scale, then shrink it to a true
+     thumbnail (prose font-sizes are absolute, so a container font-size won't
+     cascade — a transform is the reliable way to scale it down). */
   .ov-thumb-inner {
-    font-size: 10px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 360%;
+    height: 360%;
+    padding: 22px 26px;
+    box-sizing: border-box;
+    transform: scale(0.2778);
+    transform-origin: top left;
     pointer-events: none;
     overflow: hidden;
-    max-height: 100%;
   }
 
   .ov-num {
@@ -735,9 +769,13 @@
   /* ── Viewport ── */
   .slides-viewport {
     flex: 1;
+    min-height: 0;
     display: flex;
-    align-items: center;
+    /* `safe center` keeps the slide centred when it fits, but anchors it to the
+       top once it's taller than the viewport so the top stays reachable. */
+    align-items: safe center;
     justify-content: center;
+    overflow-y: auto;
     padding: 24px 24px 16px;
   }
 

@@ -909,6 +909,23 @@
     max-height: calc(100vh - 120px);
     overflow-y: auto;
     z-index: 10;
+    /* Hide the scrollbar until the panel is hovered (it's idle most of the time). */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .outline-panel::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .outline-panel:hover {
+    scrollbar-width: thin;
+  }
+
+  .outline-panel:hover::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
 
   .outline-header {
