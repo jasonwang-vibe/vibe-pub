@@ -566,7 +566,7 @@
   <div class="panel-section panel-view-select">
     <div class="panel-view-row">
       <span class="panel-ex-label">single file</span>
-      {#each ['doc', 'kanban', 'slides', 'changelog', 'timeline', 'dashboard'] as v}
+      {#each ['doc', 'kanban', 'slides'] as v}
         <button
           class="panel-ex-btn"
           class:active={viewOverride === v}
