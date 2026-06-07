@@ -404,6 +404,16 @@
   );
   let pgDocLede = $derived(result?.view === 'doc' ? extractLede(pgDocHtml) : '');
   let pgDocReadTime = $derived(result?.view === 'doc' ? calcReadTime(result.html ?? '') : '');
+
+  // Outline state — bound to DocView
+  let pgDocOutlineVisible = $state<boolean | undefined>(undefined);
+  let pgDocHasToc = $state(false);
+
+  // Date label — format today as "mmm d"
+  const pgDocDate = (() => {
+    const d = new Date();
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase();
+  })();
 </script>
 
 <svelte:head><title>Reader playground · vibe.pub</title></svelte:head>
@@ -661,11 +671,41 @@
             <p class="pg-doc-lede">{pgDocLede}</p>
           {/if}
           <div class="pg-doc-byline">
+            <span>{pgDocDate}</span>
+            <span class="pg-doc-byline-dot"></span>
             <span>{pgDocReadTime}</span>
+            {#if pgDocHasToc}
+              <span class="pg-doc-byline-dot"></span>
+              <button
+                type="button"
+                class="pg-meta-outline-btn"
+                class:active={pgDocOutlineVisible}
+                onclick={() => (pgDocOutlineVisible = !pgDocOutlineVisible)}
+                aria-pressed={pgDocOutlineVisible}
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13" /></svg
+                >
+                <span>{pgDocOutlineVisible ? 'Hide outline' : 'Show outline'}</span>
+              </button>
+            {/if}
           </div>
         </header>
         <article class="pg-doc-article">
-          <DocView bind:comments={localComments} html={pgDocHtml} title={null} pageId="pg" />
+          <DocView
+            bind:comments={localComments}
+            bind:outlineVisible={pgDocOutlineVisible}
+            bind:hasToc={pgDocHasToc}
+            html={pgDocHtml}
+            title={null}
+            pageId="pg"
+          />
         </article>
       </div>
     </div>
@@ -1257,6 +1297,34 @@
     margin-bottom: 48px;
     padding-bottom: 24px;
     border-bottom: 1px solid var(--border);
+  }
+
+  .pg-doc-byline-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+
+  .pg-meta-outline-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s;
+  }
+
+  .pg-meta-outline-btn:hover,
+  .pg-meta-outline-btn.active {
+    color: var(--text-primary);
   }
 
   .pg-doc-article {

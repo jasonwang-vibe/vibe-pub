@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { get } from 'svelte/store';
   import { browser } from '$app/environment';
   import type { Comment } from '$lib/types';
@@ -18,8 +18,17 @@
     title?: string | null;
     comments?: Comment[];
     pageId?: string;
+    outlineVisible?: boolean;
+    hasToc?: boolean;
   }
-  let { html, title = null, comments = $bindable([]), pageId = '' }: Props = $props();
+  let {
+    html,
+    title = null,
+    comments = $bindable([]),
+    pageId = '',
+    outlineVisible = $bindable(undefined),
+    hasToc = $bindable(false),
+  }: Props = $props();
 
   type EnhanceParams = { html: string; pageId: string };
 
@@ -307,6 +316,26 @@
   let showOutlinePanel = $derived(
     tocFromText.length > 0 && (viewportWide ? outlineEnabledWide : outlineOpenNarrow)
   );
+
+  // hasToc: read-only output; outlineVisible: two-way bindable
+  $effect(() => {
+    hasToc = tocFromText.length > 0;
+  });
+  // internal → parent (non-reactive write to avoid re-triggering the effect below)
+  $effect(() => {
+    const v = showOutlinePanel;
+    untrack(() => {
+      outlineVisible = v;
+    });
+  });
+  // parent → internal (only act when parent sets a different value)
+  $effect(() => {
+    const incoming = outlineVisible;
+    if (incoming !== undefined)
+      untrack(() => {
+        if (incoming !== showOutlinePanel) setOutlineVisible(incoming);
+      });
+  });
 
   function setupScrollSpy(node: HTMLElement) {
     if (!browser) return;
