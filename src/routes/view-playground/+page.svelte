@@ -84,10 +84,25 @@
     return `${Math.floor(s / 86400)}d ago`;
   }
 
+  // ── Active file selection ────────────────────────────────────────
+  let activeFile = $state<string | null>(null);
+
+  // Keep activeFile valid when files change
+  $effect(() => {
+    if (activeFile && !files.some((f) => f.name === activeFile)) activeFile = null;
+  });
+
   // ── Effective file payload ──────────────────────────────────────
-  let payload = $derived<UFile[]>(
-    files.length ? files : pasteText.trim() ? [{ name: 'untitled.md', content: pasteText }] : []
-  );
+  let payload = $derived.by<UFile[]>(() => {
+    if (files.length) {
+      if (activeFile) {
+        const f = files.find((f) => f.name === activeFile);
+        return f ? [f] : files;
+      }
+      return files;
+    }
+    return pasteText.trim() ? [{ name: 'untitled.md', content: pasteText }] : [];
+  });
 
   // ── Debounced preview fetch ─────────────────────────────────────
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -122,6 +137,7 @@
     void pasteText;
     void files;
     void viewOverride;
+    void activeFile;
     schedulePreview();
   });
 
@@ -364,12 +380,18 @@
     input.value = '';
   }
   function removeFile(name: string) {
+    if (activeFile === name) activeFile = null;
     files = files.filter((f) => f.name !== name);
   }
   function clearAll() {
     files = [];
     pasteText = '';
+    activeFile = null;
     result = null;
+  }
+  function selectFile(name: string) {
+    activeFile = activeFile === name ? null : name;
+    panelOpen = false;
   }
 
   let localComments = $state([]);
@@ -477,31 +499,9 @@
 
   <div class="panel-sep"></div>
 
-  <!-- Upload + examples -->
+  <!-- Examples -->
   <div class="panel-section">
-    <div class="panel-section-row">
-      <label class="panel-upload">
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline
-            points="17 8 12 3 7 8"
-          /><line x1="12" y1="3" x2="12" y2="15" /></svg
-        >
-        Upload files
-        <input type="file" accept=".md,.markdown,.txt" multiple onchange={onFileInput} hidden />
-      </label>
-      {#if files.length || pasteText}
-        <button class="panel-clear" onclick={clearAll}>clear</button>
-      {/if}
-    </div>
     {#if warning}<p class="panel-warn">{warning}</p>{/if}
-
-    <!-- Examples -->
     <div class="panel-examples">
       <span class="panel-ex-label">single file</span>
       {#each Object.entries(EXAMPLES).filter(([k]) => !['folder', 'collection'].includes(k)) as [key, ex]}
@@ -517,27 +517,84 @@
 
   <div class="panel-sep"></div>
 
-  <!-- Input area -->
+  <!-- File list or paste textarea -->
   <div class="panel-input-area">
     {#if files.length}
-      <div class="panel-chips">
+      <!-- File list -->
+      <div class="panel-file-list">
         {#each files as f (f.name)}
-          <span class="panel-chip">
+          <div
+            role="button"
+            tabindex="0"
+            class="panel-file-row"
+            class:active={activeFile === f.name}
+            onclick={() => selectFile(f.name)}
+            onkeydown={(e) => e.key === 'Enter' && selectFile(f.name)}
+          >
             <svg
-              width="11"
-              height="11"
+              width="12"
+              height="12"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
               ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /></svg
             >
-            {f.name}
-            <button onclick={() => removeFile(f.name)} aria-label="remove">×</button>
-          </span>
+            <span class="panel-file-name">{f.name}</span>
+            {#if activeFile === f.name}
+              <span class="panel-file-viewing">viewing</span>
+            {:else if files.length > 1}
+              <span class="panel-file-view-hint">view</span>
+            {/if}
+            <button
+              class="panel-file-del"
+              onclick={(e) => {
+                e.stopPropagation();
+                removeFile(f.name);
+              }}
+              aria-label="Remove {f.name}">×</button
+            >
+          </div>
         {/each}
       </div>
+      <!-- Add more + clear -->
+      <div class="panel-file-actions">
+        <label class="panel-upload panel-upload-sm">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline
+              points="17 8 12 3 7 8"
+            /><line x1="12" y1="3" x2="12" y2="15" /></svg
+          >
+          Add files
+          <input type="file" accept=".md,.markdown,.txt" multiple onchange={onFileInput} hidden />
+        </label>
+        <button class="panel-clear" onclick={clearAll}>clear all</button>
+      </div>
     {:else}
+      <!-- Upload button -->
+      <div class="panel-upload-row">
+        <label class="panel-upload">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline
+              points="17 8 12 3 7 8"
+            /><line x1="12" y1="3" x2="12" y2="15" /></svg
+          >
+          Upload files
+          <input type="file" accept=".md,.markdown,.txt" multiple onchange={onFileInput} hidden />
+        </label>
+      </div>
       <textarea
         bind:value={pasteText}
         class="panel-textarea"
@@ -546,6 +603,9 @@
           ? 'Drop .md files here…'
           : '# Your title\n\nPaste markdown to preview…'}
       ></textarea>
+      {#if pasteText}
+        <button class="panel-clear" onclick={clearAll}>clear</button>
+      {/if}
     {/if}
   </div>
 
@@ -1045,39 +1105,113 @@
     padding: 0 20px 14px;
     flex: 1;
     min-height: 0;
-  }
-
-  .panel-chips {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  .panel-chip {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 4px 6px 4px 10px;
-    display: inline-flex;
+  /* File list */
+  .panel-file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .panel-file-row {
+    display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.12s;
     color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    border: none;
+    background: transparent;
+    text-align: left;
+    width: 100%;
   }
 
-  .panel-chip button {
+  .panel-file-row:hover {
+    background: var(--surface);
+  }
+
+  .panel-file-row.active {
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    color: var(--text-primary);
+  }
+
+  .panel-file-row svg {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .panel-file-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .panel-file-viewing {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .panel-file-view-hint {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+
+  .panel-file-row:hover .panel-file-view-hint {
+    opacity: 0.6;
+  }
+
+  .panel-file-del {
     border: none;
     background: transparent;
     cursor: pointer;
     color: var(--text-tertiary);
     font-size: 14px;
     line-height: 1;
-    padding: 0;
+    padding: 2px 4px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.12s;
   }
 
-  .panel-chip button:hover {
-    color: var(--text-primary);
+  .panel-file-row:hover .panel-file-del,
+  .panel-file-row.active .panel-file-del {
+    opacity: 1;
+  }
+
+  .panel-file-del:hover {
+    color: #ef4444;
+  }
+
+  .panel-file-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 2px 0;
+  }
+
+  .panel-upload-sm {
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+  }
+
+  .panel-upload-row {
+    margin-bottom: 4px;
   }
 
   .panel-textarea {
