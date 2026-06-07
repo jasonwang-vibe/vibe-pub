@@ -100,10 +100,8 @@
       </form>
     </div>
   </div>
-{:else}
-  {#if showPublishWhenLoggedOut}
-    <a href="/new" class="top-btn primary">Publish</a>
-  {/if}
+{:else if showPublishWhenLoggedOut}
+  <a href="/new" class="top-btn primary">Publish</a>
 {/if}
 
 <style>
