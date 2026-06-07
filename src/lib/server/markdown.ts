@@ -54,12 +54,25 @@ export function parseFrontmatter(raw: string): { data: Partial<PageFrontmatter>;
 
 const CODE_FENCE_RE = /```(\w+)?\n([\s\S]*?)```/g;
 
-export async function renderMarkdown(md: string): Promise<string> {
-  // Building the Shiki highlighter (many langs + regex engine) is expensive and
-  // can exceed the Cloudflare Workers CPU budget on a cold isolate (error 1102 →
-  // HTML error page → broken JSON for callers). Only build it when there is
-  // actually a fenced code block to highlight; most docs have none.
-  const hasCodeBlock = /```/.test(md);
+export interface RenderMarkdownOptions {
+  /**
+   * Syntax-highlight fenced code blocks with Shiki. Building the highlighter
+   * (many langs + a regex engine) is expensive and can blow the Cloudflare
+   * Workers CPU budget on a cold isolate (error 1102 → HTML error page → broken
+   * JSON for callers). The live-preview endpoint passes `false` so it never
+   * risks that; published rendering keeps highlighting on.
+   */
+  highlight?: boolean;
+}
+
+export async function renderMarkdown(
+  md: string,
+  options: RenderMarkdownOptions = {}
+): Promise<string> {
+  const { highlight = true } = options;
+  // Only build the highlighter when highlighting is enabled AND there's actually
+  // a fenced code block to highlight; most docs have none.
+  const hasCodeBlock = highlight && /```/.test(md);
 
   let highlighter: Awaited<ReturnType<typeof createHighlighter>> | null = null;
   if (hasCodeBlock) {

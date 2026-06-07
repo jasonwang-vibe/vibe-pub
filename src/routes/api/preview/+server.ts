@@ -63,7 +63,10 @@ async function renderSingle(file: InputFile, override?: string) {
       return { ...base, view, sections: d.sections };
     }
     default: {
-      const html = await renderMarkdown(content);
+      // Skip Shiki in the preview path — building the highlighter on a cold
+      // Workers isolate can exceed the CPU budget (error 1102). Plain code
+      // blocks are fine for a live preview.
+      const html = await renderMarkdown(content, { highlight: false });
       return { ...base, view: 'doc', html };
     }
   }

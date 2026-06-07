@@ -107,7 +107,8 @@ function pageRowFromFile(
 async function renderChapter(p: CollectionPageRow) {
   const { content, data: fm } = parseFrontmatter(p.markdown);
   const isKanban = p.view === 'kanban';
-  const html = isKanban ? '' : await renderMarkdown(content);
+  // Preview-only path: skip Shiki to stay within the Workers CPU budget (1102).
+  const html = isKanban ? '' : await renderMarkdown(content, { highlight: false });
   let kanbanData: { columns: unknown[]; labels: Record<string, string> } | null = null;
   if (isKanban) {
     try {
