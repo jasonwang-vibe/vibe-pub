@@ -93,10 +93,22 @@
       e.preventDefault();
       kbdOpen = !kbdOpen;
     } else if (e.key === 'Escape') {
-      if (kbdOpen) { kbdOpen = false; return; }
-      if (appearanceOpen) { appearanceOpen = false; return; }
-      if (sourceOpen) { sourceOpen = false; return; }
-      if (overview) { overview = false; return; }
+      if (kbdOpen) {
+        kbdOpen = false;
+        return;
+      }
+      if (appearanceOpen) {
+        appearanceOpen = false;
+        return;
+      }
+      if (sourceOpen) {
+        sourceOpen = false;
+        return;
+      }
+      if (overview) {
+        overview = false;
+        return;
+      }
     }
   }
 
@@ -202,28 +214,66 @@
   {#if slides.length > 0}
     <div class="slides-controls">
       <button class="sc-btn" class:active={overview} onclick={toggleOverview} title="Overview">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          ><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect
-            x="3"
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          ><rect x="3" y="3" width="7" height="7" rx="1" /><rect
+            x="14"
+            y="3"
+            width="7"
+            height="7"
+            rx="1"
+          /><rect x="3" y="14" width="7" height="7" rx="1" /><rect
+            x="14"
             y="14"
             width="7"
             height="7"
             rx="1"
-          /><rect x="14" y="14" width="7" height="7" rx="1" /></svg
+          /></svg
         >
         overview
       </button>
-      <button class="sc-btn sc-icon" onclick={toggleFullscreen} title="Fit / fullscreen" aria-label="Fullscreen">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      <button
+        class="sc-btn sc-icon"
+        onclick={toggleFullscreen}
+        title="Fit / fullscreen"
+        aria-label="Fullscreen"
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
           ><path
             d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"
           /></svg
         >
       </button>
       <div class="sc-more">
-        <button class="sc-btn sc-icon" onclick={() => (moreOpen = !moreOpen)} title="More" aria-label="More">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            ><circle cx="5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="19" cy="12" r="1.4" /></svg
+        <button
+          class="sc-btn sc-icon"
+          onclick={() => (moreOpen = !moreOpen)}
+          title="More"
+          aria-label="More"
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            ><circle cx="5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle
+              cx="19"
+              cy="12"
+              r="1.4"
+            /></svg
           >
         </button>
         {#if moreOpen}
@@ -232,19 +282,35 @@
               onclick={() => {
                 sourceOpen = !sourceOpen;
                 moreOpen = false;
-              }}>
+              }}
+            >
               {sourceOpen ? 'Hide source' : 'View source'}
               <span class="sc-kbd">s</span>
             </button>
-            <button onclick={() => { filmstripOpen = !filmstripOpen; moreOpen = false; }}>
+            <button
+              onclick={() => {
+                filmstripOpen = !filmstripOpen;
+                moreOpen = false;
+              }}
+            >
               {filmstripOpen ? 'Hide filmstrip' : 'Show filmstrip'}
             </button>
-            <button onclick={() => { kbdOpen = true; moreOpen = false; }}>
+            <button
+              onclick={() => {
+                kbdOpen = true;
+                moreOpen = false;
+              }}
+            >
               Keyboard shortcuts
               <span class="sc-kbd">?</span>
             </button>
             <div class="sc-divider"></div>
-            <button onclick={() => { appearanceOpen = !appearanceOpen; moreOpen = false; }}>
+            <button
+              onclick={() => {
+                appearanceOpen = !appearanceOpen;
+                moreOpen = false;
+              }}
+            >
               Appearance
             </button>
           </div>
@@ -257,7 +323,12 @@
     <div class="slides-overview">
       <div class="ov-grid">
         {#each slides as s, i}
-          <button class="ov-cell" class:current={i === current} onclick={() => jumpTo(i)} aria-label="Go to slide {i + 1}">
+          <button
+            class="ov-cell"
+            class:current={i === current}
+            onclick={() => jumpTo(i)}
+            aria-label="Go to slide {i + 1}"
+          >
             <div class="ov-thumb"><div class="ov-thumb-inner prose">{@html s.html}</div></div>
             <span class="ov-num">{i + 1}</span>
           </button>
@@ -267,137 +338,175 @@
   {:else}
     <!-- Slide area -->
     <div class="slides-viewport">
-    {#if slides.length > 0}
-      <div class="slide-card" class:slide-fade-out={transitioning}>
-        {#if pageId}
-          <button
-            class="slide-comment-btn"
-            class:has-comments={commentCount(currentBlockId) > 0}
-            onclick={() =>
-              (activeBlockId = activeBlockId === currentBlockId ? null : currentBlockId)}
-          >
-            {commentCount(currentBlockId) > 0 ? commentCount(currentBlockId) : ''}
-          </button>
-        {/if}
-        <div class="slide-content prose">
-          {@html slides[current].html}
-        </div>
-        {#if activeBlockId === currentBlockId}
-          <div class="comment-card">
-            {#each blockComments(currentBlockId) as c}
-              <div class="cc-item">
-                <span class="cc-author">{c.display_name ?? 'Anonymous'}</span>
-                <span class="cc-time">{timeAgo(c.created)}</span>
-                <p class="cc-body">{c.body}</p>
-              </div>
-            {/each}
-            <div class="cc-form">
-              <textarea
-                class="cc-textarea"
-                placeholder="Add a comment..."
-                rows={2}
-                bind:value={commentBody}
-                onkeydown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) postComment();
-                }}
-              ></textarea>
-              <div class="cc-actions">
-                <button class="cc-cancel" onclick={() => (activeBlockId = null)}>Cancel</button>
-                <button
-                  class="cc-post"
-                  onclick={postComment}
-                  disabled={commentPosting || !commentBody.trim()}
-                >
-                  {commentPosting ? '...' : 'Comment'}
-                </button>
+      {#if slides.length > 0}
+        <div class="slide-card" class:slide-fade-out={transitioning}>
+          {#if pageId}
+            <button
+              class="slide-comment-btn"
+              class:has-comments={commentCount(currentBlockId) > 0}
+              onclick={() =>
+                (activeBlockId = activeBlockId === currentBlockId ? null : currentBlockId)}
+            >
+              {commentCount(currentBlockId) > 0 ? commentCount(currentBlockId) : ''}
+            </button>
+          {/if}
+          <div class="slide-content prose">
+            {@html slides[current].html}
+          </div>
+          {#if activeBlockId === currentBlockId}
+            <div class="comment-card">
+              {#each blockComments(currentBlockId) as c}
+                <div class="cc-item">
+                  <span class="cc-author">{c.display_name ?? 'Anonymous'}</span>
+                  <span class="cc-time">{timeAgo(c.created)}</span>
+                  <p class="cc-body">{c.body}</p>
+                </div>
+              {/each}
+              <div class="cc-form">
+                <textarea
+                  class="cc-textarea"
+                  placeholder="Add a comment..."
+                  rows={2}
+                  bind:value={commentBody}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) postComment();
+                  }}
+                ></textarea>
+                <div class="cc-actions">
+                  <button class="cc-cancel" onclick={() => (activeBlockId = null)}>Cancel</button>
+                  <button
+                    class="cc-post"
+                    onclick={postComment}
+                    disabled={commentPosting || !commentBody.trim()}
+                  >
+                    {commentPosting ? '...' : 'Comment'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        {/if}
-      </div>
-    {:else}
-      <div class="slides-empty">
-        <p>No slides.</p>
+          {/if}
+        </div>
+      {:else}
+        <div class="slides-empty">
+          <p>No slides.</p>
+        </div>
+      {/if}
+    </div>
+
+    <!-- Controls bar -->
+    {#if slides.length > 1}
+      <div class="slides-controls-bar">
+        <div class="scb-left">
+          <span class="scb-pos">
+            <span class="scb-now">{pad(current + 1)}</span>
+            <span class="scb-slash">/</span>
+            <span class="scb-total">{pad(slides.length)}</span>
+          </span>
+          <span class="scb-sep">·</span>
+          <span class="scb-kicker">{slideTitle(slides[current])}</span>
+        </div>
+        <div class="scb-center">
+          <button
+            class="slides-nav-btn"
+            onclick={prev}
+            disabled={current === 0}
+            aria-label="Previous slide"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"><path d="M15 18l-6-6 6-6" /></svg
+            >
+          </button>
+          {#if indicator === 'dots'}
+            <div class="scb-dots">
+              {#each slides as _, i}
+                <button
+                  class="scb-dot"
+                  class:active={i === current}
+                  onclick={() => goTo(i)}
+                  aria-label="Go to slide {i + 1}"
+                ></button>
+              {/each}
+            </div>
+          {:else if indicator === 'bar'}
+            <div class="scb-bar"><div class="scb-bar-fill" style="width: {progress}%"></div></div>
+          {/if}
+          <button
+            class="slides-nav-btn"
+            onclick={next}
+            disabled={current === slides.length - 1}
+            aria-label="Next slide"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"><path d="M9 18l6-6-6-6" /></svg
+            >
+          </button>
+        </div>
+        <div class="scb-right"></div>
       </div>
     {/if}
-  </div>
 
-  <!-- Controls bar -->
-  {#if slides.length > 1}
-    <div class="slides-controls-bar">
-      <div class="scb-left">
-        <span class="scb-pos">
-          <span class="scb-now">{pad(current + 1)}</span>
-          <span class="scb-slash">/</span>
-          <span class="scb-total">{pad(slides.length)}</span>
-        </span>
-        <span class="scb-sep">·</span>
-        <span class="scb-kicker">{slideTitle(slides[current])}</span>
+    <!-- Filmstrip -->
+    {#if filmstripOpen && slides.length > 0}
+      <div class="slides-filmstrip">
+        <div class="sf-inner">
+          {#each slides as slide, i}
+            <button
+              class="sf-thumb"
+              class:active={i === current}
+              onclick={() => {
+                goTo(i);
+              }}
+              aria-label="Go to slide {i + 1}"
+            >
+              <span class="sf-no">{pad(i + 1)}</span>
+              <span class="sf-title">{slideTitle(slide)}</span>
+            </button>
+          {/each}
+        </div>
       </div>
-      <div class="scb-center">
-        <button class="slides-nav-btn" onclick={prev} disabled={current === 0} aria-label="Previous slide">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        {#if indicator === 'dots'}
-          <div class="scb-dots">
-            {#each slides as _, i}
-              <button
-                class="scb-dot"
-                class:active={i === current}
-                onclick={() => goTo(i)}
-                aria-label="Go to slide {i + 1}"
-              ></button>
-            {/each}
-          </div>
-        {:else if indicator === 'bar'}
-          <div class="scb-bar"><div class="scb-bar-fill" style="width: {progress}%"></div></div>
-        {/if}
-        <button class="slides-nav-btn" onclick={next} disabled={current === slides.length - 1} aria-label="Next slide">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-      </div>
-      <div class="scb-right"></div>
-    </div>
+    {/if}
   {/if}
-
-  <!-- Filmstrip -->
-  {#if filmstripOpen && slides.length > 0}
-    <div class="slides-filmstrip">
-      <div class="sf-inner">
-        {#each slides as slide, i}
-          <button
-            class="sf-thumb"
-            class:active={i === current}
-            onclick={() => { goTo(i); }}
-            aria-label="Go to slide {i + 1}"
-          >
-            <span class="sf-no">{pad(i + 1)}</span>
-            <span class="sf-title">{slideTitle(slide)}</span>
-          </button>
-        {/each}
-      </div>
-    </div>
-  {/if}
-{/if}
 </div>
 
 <!-- Appearance panel -->
 {#if appearanceOpen}
-  <div class="slides-ap-backdrop" onclick={() => (appearanceOpen = false)} role="presentation"></div>
+  <div
+    class="slides-ap-backdrop"
+    onclick={() => (appearanceOpen = false)}
+    role="presentation"
+  ></div>
   <div class="slides-ap">
     <div class="ap-section">
       <div class="ap-label">Aspect ratio</div>
       <div class="ap-row">
-        {#each [['16-9','16:9'],['4-3','4:3'],['letter','letter']] as [val, lbl]}
-          <button class="ap-btn" class:active={ratio === (val as typeof ratio)} onclick={() => (ratio = val as typeof ratio)}>{lbl}</button>
+        {#each [['16-9', '16:9'], ['4-3', '4:3'], ['letter', 'letter']] as [val, lbl]}
+          <button
+            class="ap-btn"
+            class:active={ratio === (val as typeof ratio)}
+            onclick={() => (ratio = val as typeof ratio)}>{lbl}</button
+          >
         {/each}
       </div>
     </div>
     <div class="ap-section">
       <div class="ap-label">Progress</div>
       <div class="ap-row">
-        {#each [['dots','dots'],['bar','bar'],['none','none']] as [val, lbl]}
-          <button class="ap-btn" class:active={indicator === (val as typeof indicator)} onclick={() => (indicator = val as typeof indicator)}>{lbl}</button>
+        {#each [['dots', 'dots'], ['bar', 'bar'], ['none', 'none']] as [val, lbl]}
+          <button
+            class="ap-btn"
+            class:active={indicator === (val as typeof indicator)}
+            onclick={() => (indicator = val as typeof indicator)}>{lbl}</button
+          >
         {/each}
       </div>
     </div>
@@ -414,18 +523,42 @@
         <p>press <strong>?</strong> anytime</p>
       </div>
       <button class="kbd-close" onclick={() => (kbdOpen = false)} aria-label="Close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          ><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg
+        >
       </button>
     </div>
     <div class="kbd-grid">
-      <div class="kbd-row"><span>Next slide</span><span class="kbd-keys"><kbd>→</kbd><span>/</span><kbd>Space</kbd></span></div>
-      <div class="kbd-row"><span>Previous slide</span><span class="kbd-keys"><kbd>←</kbd></span></div>
-      <div class="kbd-row"><span>First / last slide</span><span class="kbd-keys"><kbd>Home</kbd><span>/</span><kbd>End</kbd></span></div>
-      <div class="kbd-row"><span>Overview grid</span><span class="kbd-keys"><kbd>o</kbd></span></div>
+      <div class="kbd-row">
+        <span>Next slide</span><span class="kbd-keys"
+          ><kbd>→</kbd><span>/</span><kbd>Space</kbd></span
+        >
+      </div>
+      <div class="kbd-row">
+        <span>Previous slide</span><span class="kbd-keys"><kbd>←</kbd></span>
+      </div>
+      <div class="kbd-row">
+        <span>First / last slide</span><span class="kbd-keys"
+          ><kbd>Home</kbd><span>/</span><kbd>End</kbd></span
+        >
+      </div>
+      <div class="kbd-row">
+        <span>Overview grid</span><span class="kbd-keys"><kbd>o</kbd></span>
+      </div>
       <div class="kbd-row"><span>View source</span><span class="kbd-keys"><kbd>s</kbd></span></div>
       <div class="kbd-row"><span>Fullscreen</span><span class="kbd-keys"><kbd>f</kbd></span></div>
-      <div class="kbd-row"><span>Keyboard shortcuts</span><span class="kbd-keys"><kbd>?</kbd></span></div>
-      <div class="kbd-row"><span>Close / exit</span><span class="kbd-keys"><kbd>Esc</kbd></span></div>
+      <div class="kbd-row">
+        <span>Keyboard shortcuts</span><span class="kbd-keys"><kbd>?</kbd></span>
+      </div>
+      <div class="kbd-row">
+        <span>Close / exit</span><span class="kbd-keys"><kbd>Esc</kbd></span>
+      </div>
     </div>
   </div>
 {/if}
@@ -904,9 +1037,18 @@
     flex-shrink: 0;
   }
 
-  .scb-now { color: var(--text-primary); font-weight: 600; }
-  .scb-slash { opacity: 0.4; margin: 0 3px; }
-  .scb-sep { opacity: 0.4; flex-shrink: 0; }
+  .scb-now {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .scb-slash {
+    opacity: 0.4;
+    margin: 0 3px;
+  }
+  .scb-sep {
+    opacity: 0.4;
+    flex-shrink: 0;
+  }
 
   .scb-kicker {
     color: var(--text-secondary);
@@ -924,7 +1066,9 @@
     gap: 10px;
   }
 
-  .scb-right { min-width: 0; }
+  .scb-right {
+    min-width: 0;
+  }
 
   .slides-nav-btn {
     display: flex;

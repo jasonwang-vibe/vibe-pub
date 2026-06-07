@@ -193,12 +193,34 @@
     folder: {
       label: 'Folder',
       files: [
-        { name: 'onboarding-guide.md', content: '# Onboarding guide' + NL + NL + 'How to get started.' },
+        {
+          name: 'onboarding-guide.md',
+          content: '# Onboarding guide' + NL + NL + 'How to get started.',
+        },
         {
           name: 'sprint-board.md',
-          content: ['## Todo', '### Task {#t1}', '- [ ] a', '## Done', '### Done {#d1}', '- [x] b'].join(NL),
+          content: [
+            '## Todo',
+            '### Task {#t1}',
+            '- [ ] a',
+            '## Done',
+            '### Done {#d1}',
+            '- [x] b',
+          ].join(NL),
         },
-        { name: 'investor-deck.md', content: ['---', 'view: slides', '---', '# Slide one', '', '---', '', '## Slide two'].join(NL) },
+        {
+          name: 'investor-deck.md',
+          content: [
+            '---',
+            'view: slides',
+            '---',
+            '# Slide one',
+            '',
+            '---',
+            '',
+            '## Slide two',
+          ].join(NL),
+        },
       ],
     },
     collection: {
@@ -222,7 +244,14 @@
         { name: 'basics.md', content: '# The basics' + NL + NL + 'Markdown in, URL out.' },
         {
           name: 'roadmap.md',
-          content: ['## Backlog', '### Research {#r1}', '- [ ] survey', '## Done', '### Ship it {#s1}', '- [x] launched'].join(NL),
+          content: [
+            '## Backlog',
+            '### Research {#r1}',
+            '- [ ] survey',
+            '## Done',
+            '### Ship it {#s1}',
+            '- [x] launched',
+          ].join(NL),
         },
       ],
     },
@@ -350,12 +379,12 @@
     </div>
     <div class="pg-examples">
       <span class="pg-ex-label">single file</span>
-      {#each Object.entries(EXAMPLES).filter(([k]) => !['folder','collection'].includes(k)) as [key, ex]}
+      {#each Object.entries(EXAMPLES).filter(([k]) => !['folder', 'collection'].includes(k)) as [key, ex]}
         <button class="pg-ex-btn" onclick={() => loadExample(key)}>{ex.label}</button>
       {/each}
       <span class="pg-ex-sep">·</span>
       <span class="pg-ex-label">multi-file</span>
-      {#each Object.entries(EXAMPLES).filter(([k]) => ['folder','collection'].includes(k)) as [key, ex]}
+      {#each Object.entries(EXAMPLES).filter( ([k]) => ['folder', 'collection'].includes(k) ) as [key, ex]}
         <button class="pg-ex-btn" onclick={() => loadExample(key)}>{ex.label}</button>
       {/each}
     </div>
@@ -383,35 +412,35 @@
 
 <!-- ── Preview stage ─────────────────────────────────────────────── -->
 <div class="pg-stage theme-{theme}">
-    {#if !result || result.mode === 'empty'}
-      <div class="pg-empty">Paste markdown or upload a file to preview it.</div>
-    {:else if result.mode === 'folder'}
-      <FolderView files={result.files} />
-    {:else if result.mode === 'collection'}
-      {#key collectionActiveId}
-        <PlaygroundCollection data={collectionData} />
-      {/key}
-    {:else if result.view === 'kanban'}
-      <KanbanView
-        boardFullwidth={true}
-        markdown={result.markdown}
-        pageId="pg"
-        comments={[]}
-        initialColumns={result.kanban.columns}
-        initialLabels={result.kanban.labels}
-        isOwner={false}
-      />
-    {:else if result.view === 'slides'}
-      <SlidesView slides={result.slides} title={result.title} comments={[]} pageId="pg" />
-    {:else if result.view === 'changelog'}
-      <ChangelogView releases={result.releases} title={result.title} comments={[]} pageId="pg" />
-    {:else if result.view === 'timeline'}
-      <TimelineView sections={result.sections} title={result.title} comments={[]} pageId="pg" />
-    {:else if result.view === 'dashboard'}
-      <DashboardView sections={result.sections} title={result.title} comments={[]} pageId="pg" />
-    {:else}
-      <DocView bind:comments={localComments} html={result.html} title={result.title} pageId="pg" />
-    {/if}
+  {#if !result || result.mode === 'empty'}
+    <div class="pg-empty">Paste markdown or upload a file to preview it.</div>
+  {:else if result.mode === 'folder'}
+    <FolderView files={result.files} />
+  {:else if result.mode === 'collection'}
+    {#key collectionActiveId}
+      <PlaygroundCollection data={collectionData} />
+    {/key}
+  {:else if result.view === 'kanban'}
+    <KanbanView
+      boardFullwidth={true}
+      markdown={result.markdown}
+      pageId="pg"
+      comments={[]}
+      initialColumns={result.kanban.columns}
+      initialLabels={result.kanban.labels}
+      isOwner={false}
+    />
+  {:else if result.view === 'slides'}
+    <SlidesView slides={result.slides} title={result.title} comments={[]} pageId="pg" />
+  {:else if result.view === 'changelog'}
+    <ChangelogView releases={result.releases} title={result.title} comments={[]} pageId="pg" />
+  {:else if result.view === 'timeline'}
+    <TimelineView sections={result.sections} title={result.title} comments={[]} pageId="pg" />
+  {:else if result.view === 'dashboard'}
+    <DashboardView sections={result.sections} title={result.title} comments={[]} pageId="pg" />
+  {:else}
+    <DocView bind:comments={localComments} html={result.html} title={result.title} pageId="pg" />
+  {/if}
 </div>
 
 <style>

@@ -109,9 +109,9 @@
     --surface-hover: #2e2d2a;
     --border: rgba(255, 255, 255, 0.06);
     --border-hover: rgba(255, 255, 255, 0.12);
-    --text-primary: #edeae5;   /* 15.0:1 on --bg, 13.1:1 on --surface ✓ AAA */
+    --text-primary: #edeae5; /* 15.0:1 on --bg, 13.1:1 on --surface ✓ AAA */
     --text-secondary: #9e9b95; /*  6.8:1 on --bg,  5.8:1 on --surface ✓ AA  */
-    --text-tertiary: #8c8984;  /*  5.1:1 on --bg,  4.5:1 on --surface ✓ AA  */
+    --text-tertiary: #8c8984; /*  5.1:1 on --bg,  4.5:1 on --surface ✓ AA  */
     --accent: #edeae5;
     --accent-hover: #d4d1cc;
     --search-highlight: #eab308;
