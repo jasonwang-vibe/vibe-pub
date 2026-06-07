@@ -11,6 +11,13 @@
   let { user = null, showPublishWhenLoggedOut = false, onMenuToggle }: Props = $props();
 
   let userOpen = $state(false);
+  let quickOpen = $state(false);
+
+  function toggleQuick(e: MouseEvent) {
+    e.stopPropagation();
+    quickOpen = !quickOpen;
+    onMenuToggle?.();
+  }
 
   function toggleUser(e: MouseEvent) {
     e.stopPropagation();
@@ -38,7 +45,69 @@
       document.removeEventListener('keydown', onKey);
     };
   });
+
+  $effect(() => {
+    if (!browser || !quickOpen) return;
+    function onDocClickQuick(e: MouseEvent) {
+      const t = e.target as HTMLElement;
+      if (!t.closest?.('.quick-wrap')) quickOpen = false;
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') quickOpen = false;
+    }
+    document.addEventListener('click', onDocClickQuick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onDocClickQuick);
+      document.removeEventListener('keydown', onKey);
+    };
+  });
 </script>
+
+<div class="quick-wrap">
+  <button class="quick-btn" onclick={toggleQuick} aria-label="More" aria-expanded={quickOpen}>
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+    >
+      <circle cx="5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle
+        cx="19"
+        cy="12"
+        r="1.4"
+      />
+    </svg>
+  </button>
+  <div class="quick-menu" class:open={quickOpen}>
+    <a href="/view-playground" class="qm-item" onclick={() => (quickOpen = false)}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"
+        ><rect x="3" y="3" width="7" height="7" rx="1" /><rect
+          x="14"
+          y="3"
+          width="7"
+          height="7"
+          rx="1"
+        /><rect x="3" y="14" width="7" height="7" rx="1" /><rect
+          x="14"
+          y="14"
+          width="7"
+          height="7"
+          rx="1"
+        /></svg
+      >
+      Playground
+    </a>
+    <a href="/new" class="qm-item" onclick={() => (quickOpen = false)}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"
+        ><path d="M12 5v14M5 12h14" /></svg
+      >
+      Publish .md
+    </a>
+  </div>
+</div>
 
 {#if user}
   <div class="user-wrap">
@@ -268,5 +337,90 @@
 
   .um-signout {
     width: 100%;
+  }
+
+  /* ── Quick menu (···) ── */
+  .quick-wrap {
+    position: relative;
+  }
+
+  .quick-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    margin-right: 6px;
+  }
+
+  .quick-btn:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  }
+
+  .quick-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 180px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.08),
+      0 2px 6px rgba(0, 0, 0, 0.04);
+    padding: 4px;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition:
+      opacity 140ms ease,
+      transform 140ms ease;
+  }
+
+  .quick-menu.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .qm-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 7px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text-primary);
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+
+  .qm-item:hover {
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  :global(.dark) .qm-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .qm-item svg {
+    width: 14px;
+    height: 14px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
   }
 </style>
