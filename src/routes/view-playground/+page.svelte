@@ -16,21 +16,73 @@
     content: string;
   }
 
+  interface HistoryItem {
+    name: string;
+    content: string;
+    ts: number;
+  }
+
   const THEMES = ['default', 'paper', 'claude', 'stripe', 'github', 'nord', 'midnight', 'terminal'];
   const OVERRIDES = ['doc', 'kanban', 'slides', 'changelog', 'timeline', 'dashboard'];
+  const HISTORY_KEY = 'vibe-pg-history';
+  const MAX_HISTORY = 20;
 
   let files = $state<UFile[]>([]);
   let pasteText = $state('');
   let theme = $state('default');
   let dark = $state(false);
   let viewOverride = $state('doc');
-  let inputOpen = $state(true);
+  let panelOpen = $state(false);
   let dragging = $state(false);
   let warning = $state('');
+  let pgHistory = $state<HistoryItem[]>([]);
 
   let result = $state<any>(null);
   let loading = $state(false);
   let collectionActiveId = $state('');
+
+  // ── History ─────────────────────────────────────────────────────
+  $effect(() => {
+    if (!browser) return;
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      pgHistory = raw ? JSON.parse(raw) : [];
+    } catch {
+      pgHistory = [];
+    }
+  });
+
+  function pushHistory(items: UFile[]) {
+    if (!browser || !items.length) return;
+    const now = Date.now();
+    const next = [
+      ...items.map((f) => ({ name: f.name, content: f.content, ts: now })),
+      ...pgHistory.filter((h) => !items.some((f) => f.name === h.name)),
+    ].slice(0, MAX_HISTORY);
+    pgHistory = next;
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  }
+
+  function loadHistoryItem(item: HistoryItem) {
+    files = [{ name: item.name, content: item.content }];
+    pasteText = '';
+    panelOpen = false;
+    schedulePreview(true);
+  }
+
+  function removeHistoryItem(e: MouseEvent, name: string) {
+    e.stopPropagation();
+    pgHistory = pgHistory.filter((h) => h.name !== name);
+    if (browser) localStorage.setItem(HISTORY_KEY, JSON.stringify(pgHistory));
+  }
+
+  function timeAgo(ts: number): string {
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  }
 
   // ── Effective file payload ──────────────────────────────────────
   let payload = $derived<UFile[]>(
@@ -54,10 +106,7 @@
       const res = await fetch('/api/preview', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          files: f,
-          view: viewOverride,
-        }),
+        body: JSON.stringify({ files: f, view: viewOverride }),
       });
       const next = (await res.json()) as any;
       if (next.mode === 'collection') collectionActiveId = '';
@@ -69,7 +118,6 @@
     }
   }
 
-  // re-run when inputs change
   $effect(() => {
     void pasteText;
     void files;
@@ -77,7 +125,7 @@
     schedulePreview();
   });
 
-  // ── Collection navigation: intercept /c/__playground__ links ─────
+  // ── Collection navigation ────────────────────────────────────────
   beforeNavigate((nav) => {
     const path = nav.to?.url.pathname ?? '';
     if (result?.mode === 'collection' && path.startsWith('/c/' + PLAYGROUND_COLLECTION_SLUG)) {
@@ -93,15 +141,24 @@
       : null
   );
 
-  // ── Dark mode: toggle `.dark` on <html> so the whole theme flips ─
-  // (the reader's prose tokens key off `html.dark`, not a wrapper element)
+  // ── Dark mode ────────────────────────────────────────────────────
   $effect(() => {
     if (!browser) return;
     document.documentElement.classList.toggle('dark', dark);
     return () => document.documentElement.classList.remove('dark');
   });
 
-  // ── One-click examples (incl. folder & collection) ──────────────
+  // ── Close panel on Escape ────────────────────────────────────────
+  $effect(() => {
+    if (!browser || !panelOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') panelOpen = false;
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  });
+
+  // ── Examples ────────────────────────────────────────────────────
   const NL = '\n';
   const EXAMPLES: Record<string, { label: string; view?: string; files: UFile[] }> = {
     doc: {
@@ -119,7 +176,7 @@
             '',
             'An agent writes, a human comments in the margin, the page updates. **Bold**, `inline code`, and [a link](#) read as part of the prose.',
             '',
-            '> A document is a conversation that hasn’t realized it’s interactive yet.',
+            '> A document is a conversation — the page updates live.',
             '',
             '- Write the markdown',
             '- Publish to a URL',
@@ -263,10 +320,10 @@
     pasteText = '';
     if (ex.view) viewOverride = ex.view;
     files = ex.files.map((f) => ({ ...f }));
-    inputOpen = false;
+    panelOpen = false;
   }
 
-  // ── File handling ───────────────────────────────────────────────
+  // ── File handling ────────────────────────────────────────────────
   function readFiles(list: FileList | File[]) {
     const arr = Array.from(list).filter(
       (f) =>
@@ -292,8 +349,10 @@
       )
     ).then((loaded) => {
       files = [...files, ...loaded];
+      pushHistory(loaded);
     });
   }
+
   function onDrop(e: DragEvent) {
     e.preventDefault();
     dragging = false;
@@ -315,105 +374,231 @@
 
   let localComments = $state([]);
   const modeLabel = $derived(
-    result ? (result.mode === 'single' ? `single · ${result.view}` : result.mode) : 'empty'
+    result ? (result.mode === 'single' ? `${result.view}` : result.mode) : 'empty'
   );
 </script>
 
 <svelte:head><title>Reader playground · vibe.pub</title></svelte:head>
 
-<!-- ── Top control bar ───────────────────────────────────────────── -->
-<div class="pg-bar">
-  <span class="pg-title">reader <strong>playground</strong></span>
-  <span class="pg-mode">{loading ? 'rendering…' : modeLabel}</span>
-  <div class="pg-controls">
-    <label class="pg-field"
-      >view
-      <select bind:value={viewOverride}
-        >{#each OVERRIDES as v}<option value={v}>{v}</option>{/each}</select
-      >
-    </label>
-    <label class="pg-field"
-      >theme
-      <select bind:value={theme}
-        >{#each THEMES as t}<option value={t}>{t}</option>{/each}</select
-      >
-    </label>
-    <label class="pg-check"><input type="checkbox" bind:checked={dark} /> dark</label>
-    <button class="pg-btn" onclick={() => (inputOpen = !inputOpen)}
-      >{inputOpen ? 'hide input' : 'show input'}</button
-    >
-  </div>
-</div>
+<!-- ── Backdrop ──────────────────────────────────────────────────── -->
+{#if panelOpen}
+  <div class="pg-backdrop" onclick={() => (panelOpen = false)} aria-hidden="true"></div>
+{/if}
 
-<!-- ── Input drawer ──────────────────────────────────────────────── -->
-{#if inputOpen}
-  <div
-    class="pg-input"
-    class:dragging
-    ondragover={(e) => {
-      e.preventDefault();
-      dragging = true;
-    }}
-    ondragleave={() => (dragging = false)}
-    ondrop={onDrop}
-    role="region"
-    aria-label="Markdown input"
-  >
-    <div class="pg-input-head">
-      <span
-        >Paste or upload one <code>.md</code> for doc/kanban/slides. Upload multiple files for
-        folder view; add a <code>_collection.md</code> manifest to get collection view.</span
+<!-- ── Right panel ───────────────────────────────────────────────── -->
+<div
+  class="pg-panel"
+  class:open={panelOpen}
+  ondragover={(e) => {
+    e.preventDefault();
+    dragging = true;
+  }}
+  ondragleave={() => (dragging = false)}
+  ondrop={onDrop}
+  class:dragging
+  role="region"
+  aria-label="Playground input panel"
+>
+  <!-- Panel header -->
+  <div class="panel-head">
+    <div class="panel-head-left">
+      <span class="panel-title">reader <strong>playground</strong></span>
+      <span class="panel-mode">{loading ? 'rendering…' : modeLabel}</span>
+    </div>
+    <button class="panel-close" onclick={() => (panelOpen = false)} aria-label="Close panel">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg
       >
-      <div class="pg-input-actions">
-        <label class="pg-upload"
-          >upload files<input
-            type="file"
-            accept=".md,.markdown,.txt"
-            multiple
-            onchange={onFileInput}
-            hidden
-          /></label
+    </button>
+  </div>
+
+  <!-- Controls -->
+  <div class="panel-controls">
+    <label class="panel-field">
+      <span class="panel-field-label">view</span>
+      <select bind:value={viewOverride}>
+        {#each OVERRIDES as v}<option value={v}>{v}</option>{/each}
+      </select>
+    </label>
+    <label class="panel-field">
+      <span class="panel-field-label">theme</span>
+      <select bind:value={theme}>
+        {#each THEMES as t}<option value={t}>{t}</option>{/each}
+      </select>
+    </label>
+    <label class="panel-check">
+      <input type="checkbox" bind:checked={dark} />
+      <span>dark</span>
+    </label>
+  </div>
+
+  <div class="panel-sep"></div>
+
+  <!-- Upload + examples -->
+  <div class="panel-section">
+    <div class="panel-section-row">
+      <label class="panel-upload">
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline
+            points="17 8 12 3 7 8"
+          /><line x1="12" y1="3" x2="12" y2="15" /></svg
         >
-        {#if files.length || pasteText}<button class="pg-btn" onclick={clearAll}>clear</button>{/if}
-      </div>
+        Upload files
+        <input type="file" accept=".md,.markdown,.txt" multiple onchange={onFileInput} hidden />
+      </label>
+      {#if files.length || pasteText}
+        <button class="panel-clear" onclick={clearAll}>clear</button>
+      {/if}
     </div>
-    <div class="pg-examples">
-      <span class="pg-ex-label">single file</span>
+    {#if warning}<p class="panel-warn">{warning}</p>{/if}
+
+    <!-- Examples -->
+    <div class="panel-examples">
+      <span class="panel-ex-label">single file</span>
       {#each Object.entries(EXAMPLES).filter(([k]) => !['folder', 'collection'].includes(k)) as [key, ex]}
-        <button class="pg-ex-btn" onclick={() => loadExample(key)}>{ex.label}</button>
+        <button class="panel-ex-btn" onclick={() => loadExample(key)}>{ex.label}</button>
       {/each}
-      <span class="pg-ex-sep">·</span>
-      <span class="pg-ex-label">multi-file</span>
+      <span class="panel-ex-sep">·</span>
+      <span class="panel-ex-label">multi-file</span>
       {#each Object.entries(EXAMPLES).filter( ([k]) => ['folder', 'collection'].includes(k) ) as [key, ex]}
-        <button class="pg-ex-btn" onclick={() => loadExample(key)}>{ex.label}</button>
+        <button class="panel-ex-btn" onclick={() => loadExample(key)}>{ex.label}</button>
       {/each}
     </div>
-    {#if warning}<p class="pg-warn">{warning}</p>{/if}
+  </div>
+
+  <div class="panel-sep"></div>
+
+  <!-- Input area -->
+  <div class="panel-input-area">
     {#if files.length}
-      <div class="pg-chips">
+      <div class="panel-chips">
         {#each files as f (f.name)}
-          <span class="pg-chip"
-            >{f.name}<button onclick={() => removeFile(f.name)} aria-label="remove">×</button></span
-          >
+          <span class="panel-chip">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /></svg
+            >
+            {f.name}
+            <button onclick={() => removeFile(f.name)} aria-label="remove">×</button>
+          </span>
         {/each}
       </div>
     {:else}
       <textarea
         bind:value={pasteText}
-        class="pg-textarea"
+        class="panel-textarea"
         spellcheck="false"
         placeholder={dragging
           ? 'Drop .md files here…'
-          : '# Your title\n\nWrite or paste markdown to preview it in the reader…'}
+          : '# Your title\n\nPaste markdown to preview…'}
       ></textarea>
     {/if}
   </div>
-{/if}
+
+  <!-- History -->
+  {#if pgHistory.length > 0}
+    <div class="panel-sep"></div>
+    <div class="panel-section">
+      <div class="panel-section-head">
+        <span class="panel-section-title">Recent files</span>
+      </div>
+      <div class="panel-history">
+        {#each pgHistory as item (item.name + item.ts)}
+          <div
+            role="button"
+            tabindex="0"
+            class="panel-hist-row"
+            onclick={() => loadHistoryItem(item)}
+            onkeydown={(e) => e.key === 'Enter' && loadHistoryItem(item)}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /></svg
+            >
+            <span class="hist-name">{item.name}</span>
+            <span class="hist-time">{timeAgo(item.ts)}</span>
+            <button
+              class="hist-del"
+              onclick={(e) => removeHistoryItem(e, item.name)}
+              aria-label="Remove from history">×</button
+            >
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+</div>
+
+<!-- ── FAB toggle ─────────────────────────────────────────────────── -->
+<button
+  class="pg-fab"
+  class:active={panelOpen}
+  onclick={() => (panelOpen = !panelOpen)}
+  aria-label={panelOpen ? 'Close input panel' : 'Open input panel'}
+  aria-expanded={panelOpen}
+>
+  {#if panelOpen}
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg
+    >
+  {:else}
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      ><rect x="3" y="3" width="7" height="7" rx="1" /><rect
+        x="14"
+        y="3"
+        width="7"
+        height="7"
+        rx="1"
+      /><rect x="3" y="14" width="7" height="7" rx="1" /><rect
+        x="14"
+        y="14"
+        width="7"
+        height="7"
+        rx="1"
+      /></svg
+    >
+  {/if}
+</button>
 
 <!-- ── Preview stage ─────────────────────────────────────────────── -->
 <div class="pg-stage theme-{theme}">
   {#if !result || result.mode === 'empty'}
-    <div class="pg-empty">Paste markdown or upload a file to preview it.</div>
+    <div class="pg-empty">
+      <p>Paste markdown or upload a file to preview it.</p>
+      <button class="pg-empty-btn" onclick={() => (panelOpen = true)}>Open input panel →</button>
+    </div>
   {:else if result.mode === 'folder'}
     <FolderView files={result.files} />
   {:else if result.mode === 'collection'}
@@ -444,211 +629,506 @@
 </div>
 
 <style>
-  .pg-bar {
-    position: sticky;
-    top: 0;
-    z-index: 60;
+  /* ── Stage ── */
+  .pg-stage {
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: calc(100vh - 56px);
+  }
+
+  .pg-empty {
+    max-width: 480px;
+    margin: 100px auto;
+    text-align: center;
+    font-family: var(--font-prose);
+    color: var(--text-tertiary);
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 16px;
-    padding: 10px 20px;
-    background: #1a1917;
-    color: #edeae5;
-    font-family: var(--font-mono);
-    font-size: 12px;
   }
-  .pg-title strong {
-    font-weight: 600;
+
+  .pg-empty p {
+    font-style: italic;
+    margin: 0;
   }
-  .pg-mode {
-    color: #9e9b95;
+
+  .pg-empty-btn {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
   }
-  .pg-controls {
+
+  .pg-empty-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--text-tertiary);
+  }
+
+  /* ── FAB ── */
+  .pg-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    background: var(--text-primary);
+    color: var(--bg);
+    border: none;
+    cursor: pointer;
+    z-index: 100;
     display: flex;
     align-items: center;
-    gap: 14px;
-    margin-left: auto;
+    justify-content: center;
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.2),
+      0 1px 4px rgba(0, 0, 0, 0.1);
+    transition:
+      transform 0.15s,
+      box-shadow 0.15s,
+      background 0.15s;
   }
-  .pg-field,
-  .pg-check {
+
+  .pg-fab:hover {
+    transform: scale(1.08);
+    box-shadow:
+      0 6px 20px rgba(0, 0, 0, 0.25),
+      0 2px 6px rgba(0, 0, 0, 0.12);
+  }
+
+  .pg-fab.active {
+    background: var(--text-secondary);
+  }
+
+  /* ── Backdrop ── */
+  .pg-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(1px);
+    animation: backdrop-in 200ms ease;
+  }
+
+  @keyframes backdrop-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* ── Panel ── */
+  .pg-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(400px, 100vw);
+    height: 100dvh;
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.1);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .pg-panel.open {
+    transform: translateX(0);
+  }
+
+  .pg-panel.dragging {
+    box-shadow: inset 0 0 0 2px var(--text-primary);
+  }
+
+  /* Panel header */
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 1;
+  }
+
+  .panel-head-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .panel-title strong {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .panel-mode {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+
+  .panel-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    background: transparent;
+    border-radius: 999px;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .panel-close:hover {
+    color: var(--text-primary);
+    border-color: var(--text-tertiary);
+  }
+
+  /* Controls */
+  .panel-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 20px;
+    flex-shrink: 0;
+  }
+
+  .panel-field {
     display: inline-flex;
     align-items: center;
     gap: 6px;
   }
-  .pg-bar select {
+
+  .panel-field-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .panel-controls select {
     font-family: var(--font-mono);
     font-size: 12px;
-    background: #2e2d2a;
-    color: #edeae5;
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 3px 6px;
+    padding: 4px 8px;
+    cursor: pointer;
   }
-  .pg-btn {
+
+  .panel-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  /* Separator */
+  .panel-sep {
+    height: 1px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  /* Sections */
+  .panel-section {
+    padding: 14px 20px;
+    flex-shrink: 0;
+  }
+
+  .panel-section-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .panel-upload {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.15s;
+  }
+
+  .panel-upload:hover {
+    background: var(--surface);
+    border-color: var(--text-tertiary);
+  }
+
+  .panel-clear {
     font-family: var(--font-mono);
     font-size: 12px;
     background: transparent;
-    color: #b8b5af;
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: var(--text-tertiary);
+    border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 4px 10px;
+    padding: 6px 10px;
     cursor: pointer;
-  }
-  .pg-btn:hover {
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.4);
   }
 
-  .pg-input {
-    background: var(--surface, #fff);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 20px;
-  }
-  .pg-input.dragging {
-    box-shadow: inset 0 0 0 2px #1a1917;
-  }
-  .pg-input-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    font-family: var(--font-sans);
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-bottom: 10px;
-  }
-  .pg-input-head code {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    background: rgba(0, 0, 0, 0.05);
-    padding: 1px 5px;
-    border-radius: 4px;
-  }
-  :global(.dark) .pg-input-head code {
-    background: rgba(255, 255, 255, 0.08);
-  }
-  .pg-input-actions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .pg-upload {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    border: 1px solid var(--border-hover, rgba(0, 0, 0, 0.12));
-    border-radius: 6px;
-    padding: 4px 10px;
-    cursor: pointer;
+  .panel-clear:hover {
     color: var(--text-primary);
   }
-  .pg-upload:hover {
-    background: rgba(0, 0, 0, 0.04);
-  }
-  :global(.dark) .pg-upload:hover {
-    background: rgba(255, 255, 255, 0.06);
-  }
-  .pg-warn {
-    color: var(--error, #ef4444);
+
+  .panel-warn {
+    color: #ef4444;
     font-family: var(--font-mono);
     font-size: 12px;
-    margin: 0 0 8px;
+    margin: 0 0 10px;
   }
-  .pg-examples {
+
+  /* Examples */
+  .panel-examples {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
-    margin: 0 0 12px;
   }
-  .pg-ex-label {
+
+  .panel-ex-label {
     font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-tertiary);
-    margin-right: 4px;
   }
-  .pg-ex-sep {
+
+  .panel-ex-sep {
     color: var(--text-tertiary);
-    margin: 0 6px;
-    opacity: 0.5;
+    opacity: 0.4;
+    margin: 0 2px;
   }
-  .pg-ex-btn {
+
+  .panel-ex-btn {
     font-family: var(--font-mono);
     font-size: 12px;
     padding: 4px 12px;
     border-radius: 999px;
-    border: 1px solid var(--border-hover, rgba(0, 0, 0, 0.12));
+    border: 1px solid var(--border);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.15s;
   }
-  .pg-ex-btn:hover {
+
+  .panel-ex-btn:hover {
     color: var(--text-primary);
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--surface);
     border-color: var(--text-tertiary);
   }
-  :global(.dark) .pg-ex-btn:hover {
-    background: rgba(255, 255, 255, 0.06);
+
+  /* Input area */
+  .panel-input-area {
+    padding: 0 20px 14px;
+    flex: 1;
+    min-height: 0;
   }
-  .pg-chips {
+
+  .panel-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
   }
-  .pg-chip {
+
+  .panel-chip {
     font-family: var(--font-mono);
     font-size: 11px;
-    background: rgba(0, 0, 0, 0.05);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 3px 6px 3px 10px;
+    padding: 4px 6px 4px 10px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     color: var(--text-secondary);
   }
-  :global(.dark) .pg-chip {
-    background: rgba(255, 255, 255, 0.07);
-  }
-  .pg-chip button {
+
+  .panel-chip button {
     border: none;
     background: transparent;
     cursor: pointer;
     color: var(--text-tertiary);
     font-size: 14px;
     line-height: 1;
-  }
-  .pg-chip button:hover {
-    color: var(--text-primary);
-  }
-  .pg-textarea {
-    width: 100%;
-    min-height: 180px;
-    resize: vertical;
-    font-family: var(--font-mono);
-    font-size: 13px;
-    line-height: 1.7;
-    color: var(--text-primary);
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px 18px;
-    box-sizing: border-box;
-    outline: none;
+    padding: 0;
   }
 
-  .pg-stage {
-    background: var(--bg);
+  .panel-chip button:hover {
     color: var(--text-primary);
-    min-height: calc(100vh - 44px);
   }
-  .pg-empty {
-    max-width: 600px;
-    margin: 80px auto;
-    text-align: center;
-    font-family: var(--font-prose);
-    font-style: italic;
+
+  .panel-textarea {
+    width: 100%;
+    min-height: 220px;
+    max-height: 40vh;
+    resize: vertical;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--text-primary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .panel-textarea:focus {
+    border-color: var(--text-tertiary);
+  }
+
+  /* History */
+  .panel-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .panel-section-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--text-tertiary);
+  }
+
+  .panel-history {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .panel-hist-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 13px;
+  }
+
+  .panel-hist-row:hover {
+    background: var(--surface);
+  }
+
+  .panel-hist-row svg {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .hist-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .hist-time {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .hist-del {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.12s;
+    flex-shrink: 0;
+  }
+
+  .panel-hist-row:hover .hist-del {
+    opacity: 1;
+  }
+
+  .hist-del:hover {
+    color: #ef4444;
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 640px) {
+    .pg-fab {
+      bottom: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+    }
+
+    .pg-panel {
+      width: 100vw;
+      border-left: none;
+      border-top: 1px solid var(--border);
+      top: auto;
+      bottom: 0;
+      height: 85dvh;
+      border-radius: 16px 16px 0 0;
+      transform: translateY(100%);
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+    }
+
+    .pg-panel.open {
+      transform: translateY(0);
+    }
   }
 </style>

@@ -1,5 +1,6 @@
-import type { PageServerLoad } from './$types';
-import { getDb, getAllPages } from '$lib/server/db';
+import { fail } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
+import { getDb, getAllPages, deletePage } from '$lib/server/db';
 import { buildCanonicalPath } from '$lib/server/slug';
 
 export const load: PageServerLoad = async ({ platform }) => {
@@ -16,4 +17,16 @@ export const load: PageServerLoad = async ({ platform }) => {
       canonicalPath: buildCanonicalPath(p),
     })),
   };
+};
+
+export const actions: Actions = {
+  delete: async ({ request, platform }) => {
+    if (!platform) return fail(500, { error: 'No platform' });
+    const data = await request.formData();
+    const id = data.get('id') as string;
+    if (!id) return fail(400, { error: 'Missing id' });
+    const db = getDb(platform);
+    await deletePage(db, id);
+    return { deleted: id };
+  },
 };
