@@ -334,6 +334,12 @@
 
 <svelte:head><title>Reader playground · vibe.pub</title></svelte:head>
 
+<!-- ── Backdrop ──────────────────────────────────────────────────── -->
+{#if panelOpen}
+  <button class="pg-backdrop" aria-label="Close input panel" onclick={() => setPanelOpen(false)}
+  ></button>
+{/if}
+
 <!-- ── Right panel ───────────────────────────────────────────────── -->
 <div
   class="pg-panel"
@@ -538,7 +544,7 @@
 </div>
 
 <!-- ── Preview stage ─────────────────────────────────────────────── -->
-<div class="pg-stage theme-{theme}" class:panel-open={panelOpen}>
+<div class="pg-stage theme-{theme}">
   {#if !result || result.mode === 'empty'}
     <div class="pg-empty">
       {#if data.pages.length > 0}
@@ -653,12 +659,26 @@
     color: var(--text-primary);
     min-height: calc(100dvh - 56px);
     display: flow-root;
-    transition: margin-right 240ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  @media (min-width: 641px) {
-    .pg-stage.panel-open {
-      margin-right: min(400px, 100vw);
+  /* ── Backdrop (dims page while panel is open) ── */
+  .pg-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.32);
+    animation: pg-backdrop-in 200ms ease;
+  }
+
+  @keyframes pg-backdrop-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 
