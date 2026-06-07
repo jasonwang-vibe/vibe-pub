@@ -1,3 +1,91 @@
+<script module lang="ts">
+  // Client-side Shiki highlighter (github-dark) — used to colour plain code
+  // blocks in the playground preview so they match production exactly. Shiki is
+  // dynamically imported, so it's a separate chunk loaded only when client
+  // highlighting is actually requested (never on normal reader pages, where the
+  // server already emits highlighted `.shiki` blocks).
+  let clientHlPromise: Promise<{
+    codeToHtml: (code: string, opts: { lang: string; theme: string }) => string;
+  }> | null = null;
+
+  function getClientHighlighter() {
+    if (!clientHlPromise) {
+      clientHlPromise = (async () => {
+        const { createHighlighter } = await import('shiki');
+        return createHighlighter({
+          themes: ['github-dark'],
+          langs: [
+            'javascript',
+            'typescript',
+            'jsx',
+            'tsx',
+            'bash',
+            'shell',
+            'json',
+            'html',
+            'css',
+            'python',
+            'markdown',
+            'yaml',
+            'sql',
+            'go',
+            'rust',
+            'java',
+            'ruby',
+            'php',
+            'c',
+            'cpp',
+            'diff',
+          ],
+        });
+      })();
+    }
+    return clientHlPromise;
+  }
+
+  /** Colour every plain `pre:not(.shiki)` block in `node` using github-dark,
+   *  matching the production server-side Shiki output. */
+  async function highlightPlainCodeBlocks(node: HTMLElement) {
+    const pres = node.querySelectorAll<HTMLElement>('pre:not(.shiki)');
+    if (!pres.length) return;
+    let hl: Awaited<ReturnType<typeof getClientHighlighter>>;
+    try {
+      hl = await getClientHighlighter();
+    } catch {
+      return;
+    }
+    pres.forEach((pre) => {
+      const code = pre.querySelector('code');
+      if (!code || pre.classList.contains('shiki')) return;
+      const text = code.textContent ?? '';
+      const m = code.className.match(/language-([\w-]+)/);
+      const lang = m?.[1] ?? 'text';
+      let out = '';
+      try {
+        out = hl.codeToHtml(text, { lang, theme: 'github-dark' });
+      } catch {
+        try {
+          out = hl.codeToHtml(text, { lang: 'text', theme: 'github-dark' });
+        } catch {
+          return;
+        }
+      }
+      const tmp = document.createElement('div');
+      tmp.innerHTML = out;
+      const shikiPre = tmp.querySelector('pre');
+      const shikiCode = tmp.querySelector('code');
+      if (!shikiPre || !shikiCode) return;
+      // Inject the coloured spans into the existing <code> so the comment gutter,
+      // copy button and language label on the <pre> are preserved.
+      code.innerHTML = shikiCode.innerHTML;
+      pre.classList.add('shiki');
+      if (shikiPre.style.backgroundColor)
+        pre.style.backgroundColor = shikiPre.style.backgroundColor;
+      if (shikiPre.style.color) pre.style.color = shikiPre.style.color;
+    });
+  }
+</script>
+
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { get } from 'svelte/store';
@@ -20,6 +108,9 @@
     pageId?: string;
     outlineVisible?: boolean;
     hasToc?: boolean;
+    /** Highlight plain code blocks in the browser (used by the playground, whose
+     *  server preview ships plain code blocks to stay within Workers limits). */
+    clientHighlight?: boolean;
   }
   let {
     html,
@@ -28,6 +119,7 @@
     pageId = '',
     outlineVisible = $bindable(undefined),
     hasToc = $bindable(false),
+    clientHighlight = false,
   }: Props = $props();
 
   type EnhanceParams = { html: string; pageId: string };
@@ -193,6 +285,9 @@
         blockIdx++;
       });
     }
+
+    // Colour plain code blocks client-side (playground only) to match production.
+    if (clientHighlight && browser) void highlightPlainCodeBlocks(node);
   }
 
   function enhanceDoc(node: HTMLElement, opts: EnhanceParams) {

@@ -904,6 +904,7 @@
             html={pgDocHtml}
             title={null}
             pageId={PG_DOC_PAGE_ID}
+            clientHighlight={true}
           />
         </article>
       </div>
