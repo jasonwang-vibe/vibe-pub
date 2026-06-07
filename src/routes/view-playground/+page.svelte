@@ -11,7 +11,12 @@
   import FolderView from '$lib/templates/folder/FolderView.svelte';
   import PlaygroundCollection from './PlaygroundCollection.svelte';
   import { PLAYGROUND_COLLECTION_SLUG } from '$lib/templates/collection/playground-slug';
-  import { kanbanReaderBoardFullwidth, playgroundPanelOpen } from '$lib/components/topbar';
+  import {
+    kanbanReaderBoardFullwidth,
+    playgroundPanelOpen,
+    playgroundPreviewActive,
+    playgroundBackAction,
+  } from '$lib/components/topbar';
   import {
     closeDocCommentsPanel,
     docCommentsPanelBlockId,
@@ -109,15 +114,55 @@
     schedulePreview(true);
   }
 
-  function loadPublishedPage(p: PubPage) {
-    const name = (p.title ?? 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.md';
-    files = [{ name, content: p.markdown }];
+  // ── Empty-state multi-select ─────────────────────────────────────
+  let selectedIds = $state<string[]>([]);
+  function toggleSelect(id: string) {
+    selectedIds = selectedIds.includes(id)
+      ? selectedIds.filter((x) => x !== id)
+      : [...selectedIds, id];
+  }
+  function pageFileName(p: PubPage): string {
+    const t = (p.title ?? 'untitled').trim();
+    if (/\.(md|markdown)$/i.test(t)) return t;
+    const slug = t
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    return `${slug || 'untitled'}.md`;
+  }
+  function viewSelectedPages() {
+    const sel = sandboxPages.filter((p) => selectedIds.includes(p.id));
+    if (!sel.length) return;
+    files = sel.map((p) => ({ name: pageFileName(p), content: p.markdown }));
     pasteText = '';
-    viewOverride = p.view ?? 'doc';
-    theme = p.theme ?? 'default';
-    setPanelOpen(true);
+    if (sel.length === 1) {
+      viewOverride = sel[0].view ?? 'doc';
+      theme = sel[0].theme ?? 'default';
+      activeFile = files[0].name;
+    } else {
+      // Multiple files → folder view (no single active file).
+      activeFile = null;
+    }
+    setPanelOpen(false);
     schedulePreview(true);
   }
+
+  // ── Back to the playground default page ──────────────────────────
+  function backToPlayground() {
+    files = [];
+    pasteText = '';
+    activeFile = null;
+    selectedIds = [];
+    result = null;
+  }
+
+  $effect(() => {
+    playgroundPreviewActive.set(!!result && result.mode !== 'empty');
+  });
+  $effect(() => {
+    playgroundBackAction.set(backToPlayground);
+    return () => playgroundBackAction.set(null);
+  });
 
   function removeHistoryItem(e: MouseEvent, name: string) {
     e.stopPropagation();
@@ -738,24 +783,42 @@
     <div class="pg-empty">
       {#if sandboxPages.length > 0}
         <div class="pg-pages">
-          <div class="pg-pages-head">Published pages</div>
+          <div class="pg-pages-head">
+            <span>Published pages</span>
+            <span class="pg-pages-hint">select one or more to preview</span>
+          </div>
           <div class="pg-pages-list">
             {#each sandboxPages as p (p.id)}
-              <button class="pg-page-row" onclick={() => loadPublishedPage(p)}>
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /></svg
-                >
+              <button
+                class="pg-page-row"
+                class:selected={selectedIds.includes(p.id)}
+                onclick={() => toggleSelect(p.id)}
+                aria-pressed={selectedIds.includes(p.id)}
+              >
+                <span class="pg-page-check" class:on={selectedIds.includes(p.id)}>
+                  {#if selectedIds.includes(p.id)}
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"><path d="M20 6L9 17l-5-5" /></svg
+                    >
+                  {/if}
+                </span>
                 <span class="pg-page-title">{p.title ?? 'Untitled'}</span>
                 <span class="pg-page-view">{p.view}</span>
               </button>
             {/each}
           </div>
+          {#if selectedIds.length > 0}
+            <button class="pg-view-selected" onclick={viewSelectedPages}>
+              {selectedIds.length === 1
+                ? 'Preview file'
+                : `Preview ${selectedIds.length} files as folder`} →
+            </button>
+          {/if}
           <p class="pg-empty-hint">
             Or <button class="pg-link-btn" onclick={() => setPanelOpen(true)}
               >upload your own file →</button
@@ -1017,12 +1080,22 @@
   }
 
   .pg-pages-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
     font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-tertiary);
     padding: 0 4px;
+  }
+
+  .pg-pages-hint {
+    letter-spacing: 0.04em;
+    text-transform: none;
+    opacity: 0.7;
   }
 
   .pg-pages-list {
@@ -1053,9 +1126,52 @@
     border-color: var(--text-tertiary);
   }
 
+  .pg-page-row.selected {
+    border-color: var(--text-primary);
+    background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  }
+
   .pg-page-row svg {
-    color: var(--text-tertiary);
     flex-shrink: 0;
+  }
+
+  .pg-page-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border);
+    color: var(--bg);
+    flex-shrink: 0;
+    transition:
+      background 0.12s,
+      border-color 0.12s;
+  }
+
+  .pg-page-check.on {
+    background: var(--text-primary);
+    border-color: var(--text-primary);
+  }
+
+  .pg-view-selected {
+    margin-top: 4px;
+    align-self: stretch;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--bg);
+    background: var(--text-primary);
+    border: none;
+    border-radius: 999px;
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+
+  .pg-view-selected:hover {
+    filter: brightness(0.92);
   }
 
   .pg-page-title {

@@ -16,3 +16,9 @@ export function closeReaderAppearancePanel() {
 
 /** Playground input panel open state — shared between Header toggle and page. */
 export const playgroundPanelOpen = writable(false);
+
+/** True when the playground is showing a preview (not the default/empty page). */
+export const playgroundPreviewActive = writable(false);
+
+/** Reset callback the playground registers so the Header "Back" button can call it. */
+export const playgroundBackAction = writable<(() => void) | null>(null);

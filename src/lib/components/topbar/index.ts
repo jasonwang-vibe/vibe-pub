@@ -28,5 +28,7 @@ export {
   kanbanReaderBoardFullwidth,
   openReaderAppearancePanel,
   playgroundPanelOpen,
+  playgroundPreviewActive,
+  playgroundBackAction,
   readerAppearancePanelOpen,
 } from './stores';

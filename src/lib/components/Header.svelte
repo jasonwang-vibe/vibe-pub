@@ -14,8 +14,11 @@
     kanbanReaderBoardFullwidth,
     openReaderAppearancePanel,
     playgroundPanelOpen,
+    playgroundPreviewActive,
+    playgroundBackAction,
     readerAppearancePanelOpen,
   } from '$lib/components/topbar';
+  import { get } from 'svelte/store';
   import Share from '$lib/components/topbar/Share.svelte';
   import User from '$lib/components/topbar/User.svelte';
   import { openMyPageSearchPanel } from '$lib/components/mypage/stores';
@@ -201,7 +204,18 @@
   <nav class="topbar" aria-label="Site">
     <div class="top-left">
       <a href={user ? `/@${user.username}` : '/'} class="brand">vibe.<em>pub</em></a>
-      {#if pathname !== '/'}
+      {#if pathname === '/view-playground' && $playgroundPreviewActive}
+        <button type="button" class="pg-back-btn" onclick={() => get(playgroundBackAction)?.()}>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg
+          >
+          Back to playground
+        </button>
+      {:else if pathname !== '/'}
         <div class="crumb-meta">
           <span class="slug">{crumb}</span>
         </div>
@@ -701,6 +715,38 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
+  }
+
+  .pg-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px 6px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .pg-back-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--text-tertiary);
+    background: rgba(0, 0, 0, 0.03);
+  }
+
+  :global(.dark) .pg-back-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .pg-back-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
   }
 
   .crumb-meta .slug {
