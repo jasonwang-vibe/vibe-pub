@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { beforeNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
   import DocView from '$lib/templates/doc/DocView.svelte';
@@ -11,6 +12,12 @@
   import PlaygroundCollection from './PlaygroundCollection.svelte';
   import { PLAYGROUND_COLLECTION_SLUG } from '$lib/templates/collection/playground-slug';
   import { kanbanReaderBoardFullwidth, playgroundPanelOpen } from '$lib/components/topbar';
+  import {
+    closeDocCommentsPanel,
+    docCommentsPanelBlockId,
+    docCommentsPanelOpen,
+  } from '$lib/stores';
+  import type { Comment } from '$lib/types';
 
   interface UFile {
     name: string;
@@ -330,6 +337,93 @@
     const d = new Date();
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase();
   })();
+
+  // Doc URL line (mirrors production's .doc-meta-url): host + slug of the title
+  function slugify(s: string): string {
+    return (
+      s
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '') || 'untitled'
+    );
+  }
+  let pgDocUrl = $derived.by(() => {
+    const host = browser ? window.location.host : 'vibe.pub';
+    return `${host}/${slugify(result?.title ?? 'untitled')}`;
+  });
+
+  // ── Local (in-memory) doc comments ───────────────────────────────
+  // The playground has no published page to persist against, so comments live
+  // only in memory for the current preview. DocView renders its gutter buttons
+  // whenever pageId is non-empty and dispatches block clicks through the shared
+  // doc-comments store, which this lightweight panel reads.
+  const PG_DOC_PAGE_ID = 'pg-doc-preview';
+  let pgDocComments = $state<Comment[]>([]);
+  let commentsPanelOpen = $state(false);
+  let commentsPanelBlockId = $state<string | null>(null);
+  let pgCommentDraft = $state('');
+
+  $effect(() => {
+    const u1 = docCommentsPanelOpen.subscribe((v) => (commentsPanelOpen = v));
+    const u2 = docCommentsPanelBlockId.subscribe((v) => (commentsPanelBlockId = v));
+    return () => {
+      u1();
+      u2();
+    };
+  });
+
+  // Reset comments + close the rail whenever the previewed content changes.
+  $effect(() => {
+    void pgDocHtml;
+    untrack(() => {
+      pgDocComments = [];
+      pgCommentDraft = '';
+      closeDocCommentsPanel();
+    });
+  });
+
+  function pgBlockComments(blockId: string | null): Comment[] {
+    if (!blockId) return pgDocComments;
+    return pgDocComments.filter((c) => {
+      try {
+        const a = typeof c.anchor === 'string' ? JSON.parse(c.anchor) : c.anchor;
+        return a?.block_id === blockId;
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  function pgPostComment() {
+    const body = pgCommentDraft.trim();
+    if (!body || !commentsPanelBlockId) return;
+    const anchor = JSON.stringify({ type: 'block', block_id: commentsPanelBlockId });
+    pgDocComments = [
+      ...pgDocComments,
+      {
+        id: crypto.randomUUID(),
+        page_id: PG_DOC_PAGE_ID,
+        user_id: null,
+        display_name: 'You',
+        anchor,
+        anchor_hint: commentsPanelBlockId,
+        body,
+        resolved: 0,
+        agent_published: 0,
+        created: new Date().toISOString(),
+      } as Comment,
+    ];
+    pgCommentDraft = '';
+  }
+
+  function pgCommentTimeAgo(iso: string): string {
+    const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)}m`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h`;
+    return `${Math.floor(s / 86400)}d`;
+  }
 </script>
 
 <svelte:head><title>Reader playground · vibe.pub</title></svelte:head>
@@ -606,7 +700,7 @@
     <div class="pg-doc-layout">
       <div class="pg-doc-main">
         <header class="pg-doc-header">
-          <div class="pg-doc-meta-url">playground preview</div>
+          <div class="pg-doc-meta-url">{pgDocUrl}</div>
           <h1 class="pg-doc-hero-title">{result.title ?? 'Untitled'}</h1>
           {#if pgDocLede}
             <p class="pg-doc-lede">{pgDocLede}</p>
@@ -640,17 +734,70 @@
         </header>
         <article class="pg-doc-article">
           <DocView
+            bind:comments={pgDocComments}
             bind:outlineVisible={pgDocOutlineVisible}
             bind:hasToc={pgDocHasToc}
             html={pgDocHtml}
             title={null}
-            pageId=""
+            pageId={PG_DOC_PAGE_ID}
           />
         </article>
       </div>
     </div>
   {/if}
 </div>
+
+<!-- ── Local doc comments rail (in-memory; playground has no published page) ── -->
+{#if result?.view === 'doc' && commentsPanelOpen}
+  <aside class="pg-comments" aria-label="Comments">
+    <div class="pg-comments-head">
+      <span class="pg-comments-title">
+        {commentsPanelBlockId ? 'Block comments' : 'All comments'}
+      </span>
+      <button class="pg-comments-close" onclick={closeDocCommentsPanel} aria-label="Close comments">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg
+        >
+      </button>
+    </div>
+    <div class="pg-comments-body">
+      {#each pgBlockComments(commentsPanelBlockId) as c (c.id)}
+        <div class="pg-comment">
+          <div class="pg-comment-meta">
+            <span class="pg-comment-author">{c.display_name ?? 'You'}</span>
+            <span class="pg-comment-time">{pgCommentTimeAgo(c.created)}</span>
+          </div>
+          <p class="pg-comment-text">{c.body}</p>
+        </div>
+      {:else}
+        <p class="pg-comments-empty">No comments yet. Add the first one.</p>
+      {/each}
+    </div>
+    {#if commentsPanelBlockId}
+      <div class="pg-comments-form">
+        <textarea
+          class="pg-comment-input"
+          rows="3"
+          placeholder="Add a comment…"
+          bind:value={pgCommentDraft}
+          onkeydown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) pgPostComment();
+          }}
+        ></textarea>
+        <div class="pg-comments-actions">
+          <button class="pg-comment-post" onclick={pgPostComment} disabled={!pgCommentDraft.trim()}
+            >Comment</button
+          >
+        </div>
+      </div>
+    {/if}
+  </aside>
+{/if}
 
 <style>
   /* ── Stage ── */
@@ -661,16 +808,25 @@
     display: flow-root;
   }
 
-  /* ── Backdrop (dims page while panel is open) ── */
+  /* ── Backdrop (dims page while panel is open; leaves the header untouched) ── */
   .pg-backdrop {
     position: fixed;
-    inset: 0;
-    z-index: 150;
+    top: 56px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
     border: none;
     padding: 0;
     cursor: pointer;
     background: rgba(0, 0, 0, 0.32);
     animation: pg-backdrop-in 200ms ease;
+  }
+
+  @media (max-width: 640px) {
+    .pg-backdrop {
+      top: 52px;
+    }
   }
 
   @keyframes pg-backdrop-in {
@@ -1437,8 +1593,179 @@
     position: relative;
   }
 
+  /* ── Local comments rail ── */
+  .pg-comments {
+    position: fixed;
+    top: 56px;
+    right: 0;
+    width: min(340px, 100vw);
+    height: calc(100dvh - 56px);
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.08);
+    z-index: 120;
+    display: flex;
+    flex-direction: column;
+    animation: pg-comments-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes pg-comments-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .pg-comments-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .pg-comments-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .pg-comments-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    background: transparent;
+    border-radius: 999px;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    transition: all 0.15s;
+  }
+
+  .pg-comments-close:hover {
+    color: var(--text-primary);
+    border-color: var(--text-tertiary);
+  }
+
+  .pg-comments-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .pg-comments-empty {
+    font-family: var(--font-prose);
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-style: italic;
+    margin: 0;
+  }
+
+  .pg-comment {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pg-comment-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .pg-comment-author {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .pg-comment-time {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .pg-comment-text {
+    font-family: var(--font-prose);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 0;
+    white-space: pre-wrap;
+  }
+
+  .pg-comments-form {
+    border-top: 1px solid var(--border);
+    padding: 14px 18px;
+    flex-shrink: 0;
+  }
+
+  .pg-comment-input {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    font-family: var(--font-prose);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .pg-comment-input:focus {
+    border-color: var(--text-tertiary);
+  }
+
+  .pg-comments-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .pg-comment-post {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 16px;
+    border-radius: 999px;
+    border: none;
+    background: var(--text-primary);
+    color: var(--bg);
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+
+  .pg-comment-post:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+
+  .pg-comment-post:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   /* ── Mobile ── */
   @media (max-width: 640px) {
+    .pg-comments {
+      width: 100vw;
+      top: 52px;
+      height: calc(100dvh - 52px);
+    }
+
     .pg-panel {
       width: 100vw;
       border-left: none;
