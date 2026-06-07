@@ -10,6 +10,7 @@
   import FolderView from '$lib/templates/folder/FolderView.svelte';
   import PlaygroundCollection from './PlaygroundCollection.svelte';
   import { PLAYGROUND_COLLECTION_SLUG } from '$lib/templates/collection/playground-slug';
+  import { kanbanReaderBoardFullwidth } from '$lib/components/topbar';
 
   interface UFile {
     name: string;
@@ -705,7 +706,7 @@
     {/key}
   {:else if result.view === 'kanban'}
     <KanbanView
-      boardFullwidth={true}
+      boardFullwidth={$kanbanReaderBoardFullwidth}
       markdown={result.markdown}
       pageId="pg"
       comments={[]}
