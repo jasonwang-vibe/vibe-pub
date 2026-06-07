@@ -611,10 +611,16 @@
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--bg);
     border-bottom: 1px solid var(--border);
+  }
+
+  @media (min-width: 641px) {
+    .site-header-blur {
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
   }
 
   .topbar {
