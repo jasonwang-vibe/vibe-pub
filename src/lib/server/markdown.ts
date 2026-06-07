@@ -7,42 +7,50 @@ import remarkRehype from 'remark-rehype';
 import rehypeStringify from 'rehype-stringify';
 import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
-import { createHighlighter, createJavaScriptRegexEngine } from 'shiki';
+import type { Highlighter } from 'shiki';
 import type { PageFrontmatter } from '$lib/types';
 
-let highlighterPromise: ReturnType<typeof createHighlighter> | null = null;
+let highlighterPromise: Promise<Highlighter> | null = null;
 
 /**
  * Use JS RegExp engine (not Oniguruma WASM) so highlighting works on Cloudflare Workers.
  * Default Shiki WASM often fails in Workers; see https://github.com/shikijs/shiki/issues/590
+ *
+ * Shiki is imported DYNAMICALLY here: a static top-level import would pull the
+ * (large) Shiki bundle into every module that loads markdown.ts — including the
+ * live-preview endpoint — and parsing it on a cold Workers isolate alone can
+ * exceed the CPU budget (error 1102), even when we never highlight anything.
  */
-function getHighlighter() {
+function getHighlighter(): Promise<Highlighter> {
   if (!highlighterPromise) {
-    highlighterPromise = createHighlighter({
-      themes: ['github-dark'],
-      langs: [
-        'javascript',
-        'typescript',
-        'python',
-        'bash',
-        'json',
-        'html',
-        'css',
-        'sql',
-        'yaml',
-        'markdown',
-        'go',
-        'rust',
-        'java',
-        'ruby',
-        'php',
-        'swift',
-        'kotlin',
-        'c',
-        'cpp',
-      ],
-      engine: createJavaScriptRegexEngine(),
-    });
+    highlighterPromise = (async () => {
+      const { createHighlighter, createJavaScriptRegexEngine } = await import('shiki');
+      return createHighlighter({
+        themes: ['github-dark'],
+        langs: [
+          'javascript',
+          'typescript',
+          'python',
+          'bash',
+          'json',
+          'html',
+          'css',
+          'sql',
+          'yaml',
+          'markdown',
+          'go',
+          'rust',
+          'java',
+          'ruby',
+          'php',
+          'swift',
+          'kotlin',
+          'c',
+          'cpp',
+        ],
+        engine: createJavaScriptRegexEngine(),
+      });
+    })();
   }
   return highlighterPromise;
 }
@@ -74,7 +82,7 @@ export async function renderMarkdown(
   // a fenced code block to highlight; most docs have none.
   const hasCodeBlock = highlight && /```/.test(md);
 
-  let highlighter: Awaited<ReturnType<typeof createHighlighter>> | null = null;
+  let highlighter: Highlighter | null = null;
   if (hasCodeBlock) {
     try {
       highlighter = await getHighlighter();
