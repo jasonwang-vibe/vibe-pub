@@ -1198,6 +1198,23 @@
     margin: 0 auto;
   }
 
+  /* When outline is visible, shift the whole column (header + body) right together */
+  @media (min-width: 1280px) {
+    .pg-doc-layout:has(.outline-panel) {
+      padding-left: calc(24px + 220px + 32px + 24px);
+    }
+
+    .pg-doc-layout:has(.outline-panel) .pg-doc-main {
+      margin-left: 0;
+      margin-right: auto;
+    }
+
+    /* Cancel DocView's own body-only shift — layout shift handles everything */
+    .pg-doc-article :global(.doc-wrap.has-outline) {
+      padding-left: 0;
+    }
+  }
+
   /* Article header — mirrors .doc-header / .doc-meta-url / .doc-hero-title / .doc-lede / .doc-byline */
   .pg-doc-header {
     margin-bottom: 0;
