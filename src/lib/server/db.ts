@@ -110,6 +110,14 @@ export async function getPagesByUser(db: D1Database, userId: string): Promise<Pa
   return normalizePages(result.results);
 }
 
+export async function getAllPages(db: D1Database, limit = 100): Promise<Page[]> {
+  const result = await db
+    .prepare('SELECT * FROM pages ORDER BY created DESC LIMIT ?')
+    .bind(limit)
+    .all<Page>();
+  return normalizePages(result.results);
+}
+
 export async function updatePage(
   db: D1Database,
   id: string,
