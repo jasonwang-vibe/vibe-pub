@@ -5,7 +5,6 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkRehype from 'remark-rehype';
 import rehypeStringify from 'rehype-stringify';
-import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
 import type { Highlighter } from 'shiki';
 import type { PageFrontmatter } from '$lib/types';
@@ -95,14 +94,19 @@ export async function renderMarkdown(
     }
   }
 
+  // NOTE: rehype-raw (which re-parses the entire HTML AST to absorb embedded raw
+  // HTML) is intentionally omitted — it's the heaviest step and made large docs
+  // exceed the Workers CPU budget (error 1102). Instead we let remark-rehype emit
+  // raw HTML nodes and have rehype-stringify pass them through verbatim
+  // (allowDangerousHtml). Heading ids still work because markdown headings are
+  // real nodes by the time rehype-slug runs.
   const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkBreaks)
     .use(remarkRehype, { allowDangerousHtml: true })
-    .use(rehypeRaw)
     .use(rehypeSlug)
-    .use(rehypeStringify);
+    .use(rehypeStringify, { allowDangerousHtml: true });
 
   const highlighted = md.replace(CODE_FENCE_RE, (_, lang, code) => {
     const language = lang || 'text';
