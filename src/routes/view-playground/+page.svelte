@@ -777,6 +777,21 @@
   {/if}
 </div>
 
+<!-- ── Mobile-only floating back button (header back is hidden on mobile) ── -->
+{#if result && result.mode !== 'empty'}
+  <button class="pg-mobile-back" onclick={backToPlayground}>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"><path d="M15 18l-6-6 6-6" /></svg
+    >
+    Playground
+  </button>
+{/if}
+
 <!-- ── Preview stage ─────────────────────────────────────────────── -->
 <div class="pg-stage theme-{theme}">
   {#if !result || result.mode === 'empty'}
@@ -1229,11 +1244,11 @@
     height: 100dvh;
     background: var(--bg);
     border-left: 1px solid var(--border);
-    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
     z-index: 200;
     display: flex;
     flex-direction: column;
-    transform: translateX(100%);
+    transform: translateX(101%);
     transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
     overflow-y: auto;
     overflow-x: hidden;
@@ -1241,6 +1256,12 @@
 
   .pg-panel.open {
     transform: translateX(0);
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Floating back control — mobile only (the header back button is hidden there). */
+  .pg-mobile-back {
+    display: none;
   }
 
   .pg-panel.dragging {
@@ -1863,12 +1884,39 @@
       bottom: 0;
       height: 85dvh;
       border-radius: 16px 16px 0 0;
-      transform: translateY(100%);
-      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+      transform: translateY(101%);
+      box-shadow: none;
     }
 
     .pg-panel.open {
       transform: translateY(0);
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+    }
+
+    .pg-mobile-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      position: fixed;
+      top: 60px;
+      left: 12px;
+      z-index: 90;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 12px 6px 9px;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .pg-mobile-back svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
     }
   }
 </style>

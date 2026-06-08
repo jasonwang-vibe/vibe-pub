@@ -1299,6 +1299,11 @@
       font-size: 12px;
       padding: 6px 10px;
     }
+
+    /* On mobile the back control lives in the page (floating), not the nav. */
+    .pg-back-btn {
+      display: none;
+    }
   }
 
   @media (max-width: 480px) {
