@@ -419,32 +419,31 @@
   );
 
   // ── Doc header helpers ────────────────────────────────────────────
-  function stripLeadingH1(html: string, title: string | null): string {
-    if (!title || !html) return html;
-    // Remove the first <h1>...</h1> if its text matches the title
-    return html.replace(/^(\s*<h1[^>]*>)(.*?)(<\/h1>)/s, (match, open, inner, close) => {
-      const text = inner.replace(/<[^>]+>/g, '').trim();
-      return text === title.trim() ? '' : match;
-    });
+  // The playground is a sandbox and must mirror the published page (PublishedPage)
+  // exactly. Production does NOT strip the leading <h1>, so the markdown's `# Title`
+  // renders again in the body below the hero title — keep that here.
+
+  // Read time: word count of the source markdown ÷ 250 (same formula as PublishedPage).
+  function calcReadTime(markdown: string): string {
+    const words = markdown
+      .replace(/[#*_`~[\]()>|]/g, '')
+      .split(/\s+/)
+      .filter(Boolean).length;
+    return `${Math.max(1, Math.ceil(words / 250))} min read`;
   }
 
-  function calcReadTime(html: string): string {
-    const text = html.replace(/<[^>]+>/g, ' ');
-    const words = text.split(/\s+/).filter(Boolean).length;
-    return `${Math.max(1, Math.round(words / 200))} min read`;
-  }
-
+  // Lede: first <p> of the (full) rendered html — same as PublishedPage.
   function extractLede(html: string): string {
     const m = html.match(/<p[^>]*>(.*?)<\/p>/s);
     if (!m) return '';
     return m[1].replace(/<[^>]+>/g, '').trim();
   }
 
-  let pgDocHtml = $derived(
-    result?.view === 'doc' ? stripLeadingH1(result.html ?? '', result.title) : ''
+  let pgDocHtml = $derived(result?.view === 'doc' ? (result.html ?? '') : '');
+  let pgDocLede = $derived(result?.view === 'doc' ? extractLede(result.html ?? '') : '');
+  let pgDocReadTime = $derived(
+    result?.view === 'doc' ? calcReadTime(payload[0]?.content ?? '') : ''
   );
-  let pgDocLede = $derived(result?.view === 'doc' ? extractLede(pgDocHtml) : '');
-  let pgDocReadTime = $derived(result?.view === 'doc' ? calcReadTime(result.html ?? '') : '');
 
   // Outline state — bound to DocView
   let pgDocOutlineVisible = $state<boolean | undefined>(undefined);
