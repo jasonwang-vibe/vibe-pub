@@ -111,6 +111,9 @@
     /** Highlight plain code blocks in the browser (used by the playground, whose
      *  server preview ships plain code blocks to stay within Workers limits). */
     clientHighlight?: boolean;
+    /** Render DocView's own outline panel. Hosts that render their own outline
+     *  (e.g. PublishedPage) pass false to avoid a duplicate overlapping panel. */
+    showOutline?: boolean;
   }
   let {
     html,
@@ -120,6 +123,7 @@
     outlineVisible = $bindable(undefined),
     hasToc = $bindable(false),
     clientHighlight = false,
+    showOutline = true,
   }: Props = $props();
 
   type EnhanceParams = { html: string; pageId: string };
@@ -493,7 +497,7 @@
   <div class="doc-reading-progress-fill" style="width: {readingProgressPct}%"></div>
 </div>
 
-{#if showOutlinePanel}
+{#if showOutline && showOutlinePanel}
   <div class="outline-panel">
     <div class="outline-header">
       <span class="outline-label">Outline</span>
@@ -526,7 +530,7 @@
   </div>
 {/if}
 
-<div class="doc-wrap" class:has-outline={showOutlinePanel}>
+<div class="doc-wrap" class:has-outline={showOutline && showOutlinePanel}>
   <article class="doc-view prose max-w-[var(--reader-measure)]" use:enhanceDoc={docEnhanceOpts}>
     {#if showTitle}
       <h1 class="doc-title">{title}</h1>

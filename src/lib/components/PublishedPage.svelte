@@ -1224,6 +1224,7 @@
               html={effectiveDocHtml}
               title={null}
               pageId={page.id}
+              showOutline={false}
             />
           </article>
 
