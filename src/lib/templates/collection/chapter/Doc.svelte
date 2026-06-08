@@ -66,7 +66,7 @@
 
   {#snippet body()}
     <div class="c-ch-body" use:searchHighlight={highlightParams}>
-      <DocView html={bodyHtml} title={null} bind:comments {pageId} />
+      <DocView html={bodyHtml} title={null} bind:comments {pageId} clientHighlight={true} />
     </div>
   {/snippet}
 

@@ -1225,6 +1225,7 @@
               title={null}
               pageId={page.id}
               showOutline={false}
+              clientHighlight={true}
             />
           </article>
 

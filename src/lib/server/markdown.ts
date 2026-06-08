@@ -64,11 +64,12 @@ const CODE_FENCE_RE = /```(\w+)?\n([\s\S]*?)```/g;
 
 export interface RenderMarkdownOptions {
   /**
-   * Syntax-highlight fenced code blocks with Shiki. Building the highlighter
-   * (many langs + a regex engine) is expensive and can blow the Cloudflare
-   * Workers CPU budget on a cold isolate (error 1102 → HTML error page → broken
-   * JSON for callers). The live-preview endpoint passes `false` so it never
-   * risks that; published rendering keeps highlighting on.
+   * Syntax-highlight fenced code blocks with Shiki on the SERVER. Building the
+   * highlighter (many langs + a regex engine) is expensive and reliably exceeds
+   * the Cloudflare Workers CPU budget (error 1102) for code-heavy docs. So this
+   * defaults to OFF — code blocks render as plain `<pre>` server-side and are
+   * highlighted in the browser by DocView (clientHighlight). Only pass `true`
+   * in a non-Workers context where CPU isn't constrained.
    */
   highlight?: boolean;
 }
@@ -77,7 +78,7 @@ export async function renderMarkdown(
   md: string,
   options: RenderMarkdownOptions = {}
 ): Promise<string> {
-  const { highlight = true } = options;
+  const { highlight = false } = options;
   // Only build the highlighter when highlighting is enabled AND there's actually
   // a fenced code block to highlight; most docs have none.
   const hasCodeBlock = highlight && /```/.test(md);

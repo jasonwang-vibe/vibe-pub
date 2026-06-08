@@ -203,6 +203,7 @@
                   title={null}
                   comments={chapter.comments}
                   pageId={chapter.pageId}
+                  clientHighlight={true}
                 />
               </div>
             {/snippet}
