@@ -108,24 +108,28 @@ export async function renderMarkdown(
     .use(rehypeSlug)
     .use(rehypeStringify, { allowDangerousHtml: true });
 
-  const highlighted = md.replace(CODE_FENCE_RE, (_, lang, code) => {
-    const language = lang || 'text';
-    if (highlighter) {
-      try {
-        return highlighter.codeToHtml(code.trimEnd(), {
-          lang: language,
-          theme: 'github-dark',
-        });
-      } catch {
-        // A cross-request highlighter can also throw here — drop the cache and
-        // fall through to plain rendering.
-        highlighterPromise = null;
-      }
-    }
-    return `<pre><code class="language-${language}">${escapeHtml(code)}</code></pre>`;
-  });
+  // Only pre-replace fenced code blocks with raw HTML when we're actually
+  // Shiki-highlighting. Injecting raw <pre> HTML and re-parsing it through the
+  // pipeline is both slower and, for some inputs (CJK + multiple fences), blows
+  // the Workers CPU budget (1102). With highlighting off (the default), feed the
+  // raw markdown straight in and let remark render code fences natively — fast,
+  // and it still emits `<code class="language-…">` for client-side highlighting.
+  const source = highlighter
+    ? md.replace(CODE_FENCE_RE, (_, lang, code) => {
+        const language = lang || 'text';
+        try {
+          return highlighter!.codeToHtml(code.trimEnd(), {
+            lang: language,
+            theme: 'github-dark',
+          });
+        } catch {
+          highlighterPromise = null;
+          return `<pre><code class="language-${language}">${escapeHtml(code)}</code></pre>`;
+        }
+      })
+    : md;
 
-  const result = await processor.process(highlighted);
+  const result = await processor.process(source);
   return String(result);
 }
 
