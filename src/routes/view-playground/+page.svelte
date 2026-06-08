@@ -232,14 +232,22 @@
       return (await res.json()) as any;
     };
     try {
+      // Retry a few times with backoff. A large doc may exceed the Worker CPU
+      // budget on the first (cold) render, but the server caches successful
+      // renders by content hash — so a retry usually lands on the cached result.
       let next: any;
-      try {
-        next = await attempt();
-      } catch {
-        // One automatic retry — usually the second hit lands on a warm isolate.
-        await new Promise((r) => setTimeout(r, 350));
-        next = await attempt();
+      let lastErr: unknown;
+      for (let i = 0; i < 4; i++) {
+        try {
+          next = await attempt();
+          lastErr = undefined;
+          break;
+        } catch (e) {
+          lastErr = e;
+          await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+        }
       }
+      if (lastErr) throw lastErr;
       warning = '';
       if (next.mode === 'collection') collectionActiveId = '';
       result = next;

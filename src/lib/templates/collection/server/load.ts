@@ -3,7 +3,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import { getCommentsByPage, getUserById } from '$lib/server/db';
 import { assertCanReadCollection, type AccessViewer } from '$lib/server/access';
 import { buildCollectionPagesSelectQuery, readerGuideFromRow } from './db';
-import { renderMarkdown, parseFrontmatter } from '$lib/server/markdown';
+import { renderMarkdown, parseFrontmatter, hashContent } from '$lib/server/markdown';
 import { buildCanonicalPath } from '$lib/server/slug';
 import { toRoman } from '$lib/roman';
 import { chapterLede } from '$lib/templates/collection/chapter/index';
@@ -228,7 +228,9 @@ export async function renderCollectionPageContent(
 }> {
   const { content, data: fm } = parseFrontmatter(page.markdown);
   const isKanban = page.view === 'kanban';
-  const html = isKanban ? '' : await renderMarkdown(content);
+  const html = isKanban
+    ? ''
+    : await renderMarkdown(content, { cacheKey: `chapter/${hashContent(content)}` });
   const comments = await getCommentsByPage(db, page.page_id);
 
   let kanbanData: { columns: KanbanColumn[]; labels: KanbanLabels } | null = null;

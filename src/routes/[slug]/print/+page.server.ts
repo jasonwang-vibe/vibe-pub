@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 import { getDb, getPageByUrlSegment } from '$lib/server/db';
 import { assertCanReadPage, toAccessViewer } from '$lib/server/access';
 import { buildCanonicalPath } from '$lib/server/slug';
-import { renderMarkdown, parseFrontmatter } from '$lib/server/markdown';
+import { renderMarkdown, parseFrontmatter, hashContent } from '$lib/server/markdown';
 
 export const load: PageServerLoad = async ({ params, platform, url, locals }) => {
   if (!platform) throw error(500, 'No platform');
@@ -20,7 +20,7 @@ export const load: PageServerLoad = async ({ params, platform, url, locals }) =>
   }
 
   const { content, data: fm } = parseFrontmatter(page.markdown);
-  const html = await renderMarkdown(content);
+  const html = await renderMarkdown(content, { cacheKey: `chapter/${hashContent(content)}` });
 
   return {
     title: page.title ?? fm.title ?? page.id,

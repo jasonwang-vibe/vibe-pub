@@ -8,7 +8,7 @@
  */
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { parseFrontmatter, renderMarkdown } from '$lib/server/markdown';
+import { parseFrontmatter, renderMarkdown, hashContent } from '$lib/server/markdown';
 import { detectView } from '$lib/templates/detect';
 import { parseKanbanBlocks } from '$lib/templates/kanban/parser';
 import { parseSlidesBlocks } from '$lib/templates/slides/parser';
@@ -65,8 +65,12 @@ async function renderSingle(file: InputFile, override?: string) {
     default: {
       // Skip Shiki in the preview path — building the highlighter on a cold
       // Workers isolate can exceed the CPU budget (error 1102). Plain code
-      // blocks are fine for a live preview.
-      const html = await renderMarkdown(content, { highlight: false });
+      // blocks are fine for a live preview. Cache by content hash so re-previews
+      // of the same doc are free and an expensive render runs at most once.
+      const html = await renderMarkdown(content, {
+        highlight: false,
+        cacheKey: `preview/${hashContent(content)}`,
+      });
       return { ...base, view: 'doc', html };
     }
   }

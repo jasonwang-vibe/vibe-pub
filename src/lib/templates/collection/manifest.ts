@@ -21,7 +21,7 @@
  *
  * Files not referenced in the manifest are appended as ungrouped pages.
  */
-import { parseFrontmatter, renderMarkdown } from '$lib/server/markdown';
+import { parseFrontmatter, renderMarkdown, hashContent } from '$lib/server/markdown';
 import { detectView } from '$lib/templates/detect';
 import { parseKanbanBlocks } from '$lib/templates/kanban/parser';
 import {
@@ -107,8 +107,14 @@ function pageRowFromFile(
 async function renderChapter(p: CollectionPageRow) {
   const { content, data: fm } = parseFrontmatter(p.markdown);
   const isKanban = p.view === 'kanban';
-  // Preview-only path: skip Shiki to stay within the Workers CPU budget (1102).
-  const html = isKanban ? '' : await renderMarkdown(content, { highlight: false });
+  // Preview-only path: skip Shiki to stay within the Workers CPU budget (1102),
+  // and cache by content hash so an expensive chapter renders at most once.
+  const html = isKanban
+    ? ''
+    : await renderMarkdown(content, {
+        highlight: false,
+        cacheKey: `preview/${hashContent(content)}`,
+      });
   let kanbanData: { columns: unknown[]; labels: Record<string, string> } | null = null;
   if (isKanban) {
     try {
