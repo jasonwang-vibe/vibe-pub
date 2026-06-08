@@ -684,7 +684,6 @@
     z-index: 0;
     pointer-events: none;
     background: var(--bg);
-    border-bottom: 1px solid var(--border);
   }
 
   @media (min-width: 641px) {
@@ -695,6 +694,8 @@
     }
   }
 
+  /* Divider lives under the main nav row — so on the playground it sits ON TOP
+     of the secondary nav, not below it. */
   .topbar {
     position: relative;
     z-index: 1;
@@ -704,6 +705,7 @@
     height: 56px;
     padding: 0 32px;
     background: transparent;
+    border-bottom: 1px solid var(--border);
   }
 
   .top-left {
@@ -794,7 +796,6 @@
     align-items: center;
     height: 44px;
     padding: 0 32px;
-    border-bottom: 1px solid var(--border);
     background: transparent;
   }
 
@@ -834,7 +835,7 @@
   .top-r {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
     flex-shrink: 0;
   }
 

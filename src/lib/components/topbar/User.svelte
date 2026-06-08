@@ -243,7 +243,6 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-left: 8px;
     transition: all 0.15s;
     overflow: hidden;
   }
@@ -377,7 +376,6 @@
     align-items: center;
     justify-content: center;
     transition: all 0.15s;
-    margin-left: 8px;
   }
 
   .quick-btn:hover {

@@ -1007,10 +1007,12 @@
   /* ── Outline panel ── */
   .outline-panel {
     position: fixed;
-    top: 80px;
+    /* Hosts with a taller sticky header (e.g. the playground's secondary nav)
+       raise --doc-outline-top so the outline clears it. */
+    top: var(--doc-outline-top, 80px);
     left: 24px;
     width: 220px;
-    max-height: calc(100vh - 120px);
+    max-height: calc(100vh - var(--doc-outline-top, 80px) - 40px);
     overflow-y: auto;
     z-index: 10;
     /* Hide the scrollbar until the panel is hovered (it's idle most of the time). */

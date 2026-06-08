@@ -1792,6 +1792,9 @@
 
   /* ── Doc layout (mirrors production PublishedPage .doc-layout + .doc-main) ── */
   .pg-doc-layout {
+    /* The playground header is taller (main nav 56px + secondary nav 44px), so
+       push DocView's fixed outline panel down to clear the secondary nav. */
+    --doc-outline-top: 124px;
     display: grid;
     grid-template-columns: 1fr;
     max-width: 1280px;
