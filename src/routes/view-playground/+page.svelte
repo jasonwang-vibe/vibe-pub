@@ -147,6 +147,20 @@
     schedulePreview(true);
   }
 
+  // Delete a published page from the sandbox (and the list).
+  async function deletePublishedPage(p: PubPage) {
+    if (!browser) return;
+    if (!confirm(`Delete "${p.title ?? 'Untitled'}" from the sandbox? This cannot be undone.`))
+      return;
+    sandboxPages = sandboxPages.filter((x) => x.id !== p.id);
+    selectedIds = selectedIds.filter((id) => id !== p.id);
+    try {
+      await fetch(`/api/pub/${p.id}`, { method: 'DELETE' });
+    } catch {
+      /* best-effort; the row is already removed from the list */
+    }
+  }
+
   // ── Back to the playground default page ──────────────────────────
   function backToPlayground() {
     files = [];
@@ -784,21 +798,6 @@
   {/if}
 </div>
 
-<!-- ── Mobile-only floating back button (header back is hidden on mobile) ── -->
-{#if result && result.mode !== 'empty'}
-  <button class="pg-mobile-back" onclick={backToPlayground}>
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"><path d="M15 18l-6-6 6-6" /></svg
-    >
-    Playground
-  </button>
-{/if}
-
 <!-- ── Preview stage ─────────────────────────────────────────────── -->
 <div class="pg-stage theme-{theme}">
   {#if !result || result.mode === 'empty'}
@@ -811,10 +810,13 @@
           </div>
           <div class="pg-pages-list">
             {#each sandboxPages as p (p.id)}
-              <button
+              <div
+                role="button"
+                tabindex="0"
                 class="pg-page-row"
                 class:selected={selectedIds.includes(p.id)}
                 onclick={() => toggleSelect(p.id)}
+                onkeydown={(e) => e.key === 'Enter' && toggleSelect(p.id)}
                 aria-pressed={selectedIds.includes(p.id)}
               >
                 <span class="pg-page-check" class:on={selectedIds.includes(p.id)}>
@@ -831,7 +833,30 @@
                 </span>
                 <span class="pg-page-title">{p.title ?? 'Untitled'}</span>
                 <span class="pg-page-view">{p.view}</span>
-              </button>
+                <button
+                  class="pg-page-del"
+                  title="Delete from sandbox"
+                  aria-label="Delete {p.title ?? 'Untitled'}"
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    deletePublishedPage(p);
+                  }}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    ><polyline points="3 6 5 6 21 6" /><path
+                      d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"
+                    /><path d="M10 11v6M14 11v6" /><path
+                      d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+                    /></svg
+                  >
+                </button>
+              </div>
             {/each}
           </div>
           {#if selectedIds.length > 0}
@@ -1217,6 +1242,34 @@
     flex-shrink: 0;
   }
 
+  .pg-page-del {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+    opacity: 0;
+    transition:
+      opacity 0.12s,
+      color 0.12s,
+      background 0.12s;
+  }
+
+  .pg-page-row:hover .pg-page-del {
+    opacity: 1;
+  }
+
+  .pg-page-del:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+  }
+
   .pg-empty-hint {
     font-family: var(--font-sans);
     font-size: 13px;
@@ -1264,11 +1317,6 @@
   .pg-panel.open {
     transform: translateX(0);
     box-shadow: -12px 0 40px rgba(0, 0, 0, 0.1);
-  }
-
-  /* Floating back control — mobile only (the header back button is hidden there). */
-  .pg-mobile-back {
-    display: none;
   }
 
   .pg-panel.dragging {
@@ -1596,13 +1644,15 @@
     background: transparent;
     cursor: pointer;
     color: var(--text-tertiary);
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1;
-    padding: 2px 4px;
+    padding: 2px 6px;
     border-radius: 4px;
     flex-shrink: 0;
-    opacity: 0;
-    transition: opacity 0.12s;
+    opacity: 0.55;
+    transition:
+      opacity 0.12s,
+      color 0.12s;
   }
 
   .panel-file-row:hover .panel-file-del,
@@ -1898,32 +1948,6 @@
     .pg-panel.open {
       transform: translateY(0);
       box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
-    }
-
-    .pg-mobile-back {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      position: fixed;
-      top: 60px;
-      left: 12px;
-      z-index: 90;
-      font-family: var(--font-sans);
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-secondary);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 6px 12px 6px 9px;
-      cursor: pointer;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .pg-mobile-back svg {
-      width: 13px;
-      height: 13px;
-      flex-shrink: 0;
     }
   }
 </style>

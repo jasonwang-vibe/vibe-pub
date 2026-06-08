@@ -5,10 +5,17 @@
     user?: { username: string } | null;
     /** When logged out, show Publish as primary (doc/kanban header). Collection uses sign-in only. */
     showPublishWhenLoggedOut?: boolean;
+    /** Show the global ··· quick menu. Hidden on the playground (it has its own UI toggle). */
+    quickMenu?: boolean;
     onMenuToggle?: () => void;
   }
 
-  let { user = null, showPublishWhenLoggedOut = false, onMenuToggle }: Props = $props();
+  let {
+    user = null,
+    showPublishWhenLoggedOut = false,
+    quickMenu = true,
+    onMenuToggle,
+  }: Props = $props();
 
   let userOpen = $state(false);
   let quickOpen = $state(false);
@@ -63,53 +70,6 @@
     };
   });
 </script>
-
-<div class="quick-wrap">
-  <button class="quick-btn" onclick={toggleQuick} aria-label="More" aria-expanded={quickOpen}>
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-    >
-      <circle cx="5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle
-        cx="19"
-        cy="12"
-        r="1.4"
-      />
-    </svg>
-  </button>
-  <div class="quick-menu" class:open={quickOpen}>
-    <a href="/view-playground" class="qm-item" onclick={() => (quickOpen = false)}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"
-        ><rect x="3" y="3" width="7" height="7" rx="1" /><rect
-          x="14"
-          y="3"
-          width="7"
-          height="7"
-          rx="1"
-        /><rect x="3" y="14" width="7" height="7" rx="1" /><rect
-          x="14"
-          y="14"
-          width="7"
-          height="7"
-          rx="1"
-        /></svg
-      >
-      Playground
-    </a>
-    <a href="/published-md" class="qm-item" onclick={() => (quickOpen = false)}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"
-        ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline
-          points="14 2 14 8 20 8"
-        /></svg
-      >
-      Published .md
-    </a>
-  </div>
-</div>
 
 {#if user}
   <div class="user-wrap">
@@ -173,6 +133,65 @@
   </div>
 {:else if showPublishWhenLoggedOut}
   <a href="/new" class="top-btn primary">Publish</a>
+{/if}
+
+{#if quickMenu}
+  <div class="quick-wrap">
+    <button class="quick-btn" onclick={toggleQuick} aria-label="More" aria-expanded={quickOpen}>
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <circle cx="5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle
+          cx="19"
+          cy="12"
+          r="1.4"
+        />
+      </svg>
+    </button>
+    <div class="quick-menu" class:open={quickOpen}>
+      <a href="/view-playground" class="qm-item" onclick={() => (quickOpen = false)}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+          ><rect x="3" y="3" width="7" height="7" rx="1" /><rect
+            x="14"
+            y="3"
+            width="7"
+            height="7"
+            rx="1"
+          /><rect x="3" y="14" width="7" height="7" rx="1" /><rect
+            x="14"
+            y="14"
+            width="7"
+            height="7"
+            rx="1"
+          /></svg
+        >
+        Playground
+      </a>
+      <a href="/published-md" class="qm-item" onclick={() => (quickOpen = false)}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+          ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline
+            points="14 2 14 8 20 8"
+          /></svg
+        >
+        Published .md
+      </a>
+    </div>
+  </div>
 {/if}
 
 <style>
@@ -358,7 +377,7 @@
     align-items: center;
     justify-content: center;
     transition: all 0.15s;
-    margin-right: 6px;
+    margin-left: 8px;
   }
 
   .quick-btn:hover {

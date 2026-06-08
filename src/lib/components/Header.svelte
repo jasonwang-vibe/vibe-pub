@@ -44,6 +44,7 @@
   };
 
   let pathname = $derived($page.url.pathname);
+  let isPlayground = $derived(pathname === '/view-playground');
   let pdata = $derived($page.data as PageData | undefined);
   let pg = $derived(pdata?.page);
   let canonicalPath = $derived(pdata?.canonicalPath ?? '');
@@ -204,18 +205,8 @@
   <nav class="topbar" aria-label="Site">
     <div class="top-left">
       <a href={user ? `/@${user.username}` : '/'} class="brand">vibe.<em>pub</em></a>
-      {#if pathname === '/view-playground' && $playgroundPreviewActive}
-        <button type="button" class="pg-back-btn" onclick={() => get(playgroundBackAction)?.()}>
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg
-          >
-          Back to playground
-        </button>
-      {:else if pathname !== '/'}
+      <span class="brand-tag">(SANDBOX)</span>
+      {#if pathname !== '/' && !isPlayground}
         <div class="crumb-meta">
           <span class="slug">{crumb}</span>
         </div>
@@ -608,14 +599,22 @@
         </button>
       {/if}
 
-      {#if pathname === '/view-playground'}
+      <User
+        {user}
+        showPublishWhenLoggedOut={!isArticlePage || !pg}
+        quickMenu={!isPlayground}
+        onMenuToggle={closeMenus}
+      />
+
+      {#if isPlayground}
         <button
           type="button"
-          class="top-btn icon-only"
+          class="ui-toggle-btn"
           class:active={$playgroundPanelOpen}
           data-pg-panel-toggle
           onclick={() => playgroundPanelOpen.update((v) => !v)}
           title={$playgroundPanelOpen ? 'Close input panel' : 'Open input panel'}
+          aria-label={$playgroundPanelOpen ? 'Close input panel' : 'Open input panel'}
           aria-expanded={$playgroundPanelOpen}
         >
           <svg
@@ -630,19 +629,45 @@
               y1="18"
               x2="20"
               y2="18"
-            /><circle cx="9" cy="6" r="2" fill="var(--bg)" /><circle
+            /><circle cx="9" cy="6" r="2.4" fill="var(--bg)" /><circle
               cx="15"
               cy="12"
-              r="2"
+              r="2.4"
               fill="var(--bg)"
-            /><circle cx="8" cy="18" r="2" fill="var(--bg)" /></svg
+            /><circle cx="8" cy="18" r="2.4" fill="var(--bg)" /></svg
           >
         </button>
       {/if}
-
-      <User {user} showPublishWhenLoggedOut={!isArticlePage || !pg} onMenuToggle={closeMenus} />
     </div>
   </nav>
+
+  {#if isPlayground}
+    <div class="subnav" aria-label="Playground navigation">
+      {#if $playgroundPreviewActive}
+        <button type="button" class="subnav-back" onclick={() => get(playgroundBackAction)?.()}>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg
+          >
+          Back to Playground
+        </button>
+      {:else}
+        <a class="subnav-back" href="/">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg
+          >
+          Back to Home
+        </a>
+      {/if}
+    </div>
+  {/if}
 </header>
 
 <style>
@@ -707,6 +732,17 @@
     opacity: 0.85;
   }
 
+  .brand-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    line-height: 1;
+    margin-left: -8px;
+  }
+
   .crumb-meta {
     font-family: var(--font-mono);
     font-size: 12px;
@@ -717,35 +753,73 @@
     min-width: 0;
   }
 
-  .pg-back-btn {
+  /* ── Playground UI panel toggle (circular icon button) ── */
+  .ui-toggle-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-family: var(--font-sans);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 6px 14px 6px 10px;
-    cursor: pointer;
+    justify-content: center;
     transition: all 0.15s;
+    flex-shrink: 0;
   }
 
-  .pg-back-btn:hover {
+  .ui-toggle-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .ui-toggle-btn:hover {
     color: var(--text-primary);
     border-color: var(--text-tertiary);
-    background: rgba(0, 0, 0, 0.03);
+    background: color-mix(in srgb, var(--text-primary) 5%, transparent);
   }
 
-  :global(.dark) .pg-back-btn:hover {
-    background: rgba(255, 255, 255, 0.06);
+  .ui-toggle-btn.active {
+    background: var(--text-primary);
+    color: var(--bg);
+    border-color: var(--text-primary);
   }
 
-  .pg-back-btn svg {
-    width: 14px;
-    height: 14px;
+  /* ── Secondary nav (playground) ── */
+  .subnav {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+  }
+
+  .subnav-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .subnav-back:hover {
+    color: var(--text-primary);
+  }
+
+  .subnav-back svg {
+    width: 15px;
+    height: 15px;
     flex-shrink: 0;
   }
 
@@ -1300,9 +1374,9 @@
       padding: 6px 10px;
     }
 
-    /* On mobile the back control lives in the page (floating), not the nav. */
-    .pg-back-btn {
-      display: none;
+    .subnav {
+      padding: 0 16px;
+      height: 40px;
     }
   }
 
