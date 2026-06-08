@@ -10,6 +10,39 @@ import {
 } from '$lib/server/access';
 import { buildCanonicalPath } from '$lib/server/slug';
 import { renderMarkdown, parseFrontmatter } from '$lib/server/markdown';
+
+/**
+ * Render markdown → HTML, caching the result in the Cloudflare edge Cache API
+ * keyed by page id + version. Large docs can be expensive to render and a fresh
+ * render on every request risks the Workers CPU limit (error 1102); caching means
+ * each (page, version) is rendered at most once per edge location.
+ */
+async function renderMarkdownCached(pageId: string, version: string, content: string) {
+  let cache: Cache | undefined;
+  let key: Request | undefined;
+  try {
+    cache = (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default;
+    if (cache) {
+      key = new Request(`https://render.cache/${pageId}/${encodeURIComponent(version)}`);
+      const hit = await cache.match(key);
+      if (hit) return await hit.text();
+    }
+  } catch {
+    cache = undefined;
+  }
+  const html = await renderMarkdown(content);
+  if (cache && key) {
+    try {
+      await cache.put(
+        key,
+        new Response(html, { headers: { 'cache-control': 'public, max-age=604800' } })
+      );
+    } catch {
+      /* cache write best-effort */
+    }
+  }
+  return html;
+}
 import { parseBlocks } from '$lib/templates';
 import { parseKanbanBlocks } from '$lib/templates/kanban/parser';
 import { parseChangelogBlocks } from '$lib/templates/changelog/parser';
@@ -42,10 +75,10 @@ export const load: PageServerLoad = async ({ params, platform, locals, url }) =>
       page.view === 'timeline' ||
       page.view === 'slides' ||
       page.view === 'dashboard';
-    const html = skipHtml ? '' : await renderMarkdown(content);
+    const html = skipHtml ? '' : await renderMarkdownCached(page.id, page.updated, content);
     // SEO/LLM body: always rendered. Used in <noscript> so non-JS clients (bots,
     // LLM fetchers) see the real content even on view types that render via JS.
-    const seoHtml = skipHtml ? await renderMarkdown(content) : html;
+    const seoHtml = skipHtml ? await renderMarkdownCached(page.id, page.updated, content) : html;
 
     // Parse blocks and view-specific data
     const templateName = page.view || 'doc';
