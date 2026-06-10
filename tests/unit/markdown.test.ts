@@ -32,11 +32,13 @@ describe('renderMarkdown', () => {
     expect(html).toContain('Hello World');
   });
 
-  it('renders code blocks with syntax highlighting', async () => {
+  it('renders code blocks with a language class for client-side highlighting', async () => {
     const html = await renderMarkdown('```javascript\nconst x = 1;\n```');
     expect(html).toContain('const');
     expect(html).toContain('<pre');
-    expect(html).toContain('shiki');
+    // Shiki runs client-side only (server-side highlighting caused CF 1102s)
+    expect(html).toContain('language-javascript');
+    expect(html).not.toContain('shiki');
   });
 
   it('renders checkboxes', async () => {
