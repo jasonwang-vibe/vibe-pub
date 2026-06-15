@@ -11,6 +11,7 @@
   import FolderView from '$lib/templates/folder/FolderView.svelte';
   import PlaygroundCollection from './PlaygroundCollection.svelte';
   import { PLAYGROUND_COLLECTION_SLUG } from '$lib/templates/collection/playground-slug';
+  import { READER_APPEARANCE_THEMES } from '$lib/components/topbar/appearance';
   import {
     kanbanReaderBoardFullwidth,
     playgroundPanelOpen,
@@ -57,7 +58,9 @@
     ts: number;
   }
 
-  const THEMES = ['default', 'paper', 'claude', 'stripe', 'github', 'nord', 'midnight', 'terminal'];
+  // The same 6 themes as the reader Appearance panel (READER_APPEARANCE_THEMES),
+  // so the playground control stays in sync with what the reader exposes.
+  const THEMES = READER_APPEARANCE_THEMES.map((t) => t.id);
   const HISTORY_KEY = 'vibe-pg-history';
   const MAX_HISTORY = 20;
 
