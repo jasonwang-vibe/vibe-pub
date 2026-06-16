@@ -56,6 +56,10 @@
     --font-display: 'Playfair Display', Georgia, serif;
     --font-brand: 'DM Serif Display', Georgia, serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+    /* Reader UI chrome (outline links, byline, action buttons). Follows the
+       active body font so it changes with the theme + font pairing. Themes
+       override --font-prose; this tracks it automatically. */
+    --font-ui: var(--font-prose);
 
     /* ── Radii ────────────────────────────────── */
     --radius-xs: 4px;

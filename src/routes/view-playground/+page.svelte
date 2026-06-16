@@ -1914,7 +1914,7 @@
   }
 
   .pg-doc-meta-url {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 12px;
     color: var(--text-tertiary);
     margin-bottom: 28px;
@@ -1944,7 +1944,7 @@
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 12px;
     color: var(--text-tertiary);
     margin-bottom: 48px;
@@ -1965,7 +1965,7 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 12px;
     color: var(--text-tertiary);
     background: transparent;

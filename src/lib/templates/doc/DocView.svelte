@@ -1042,7 +1042,7 @@
   }
 
   .outline-label {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 10px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -1076,7 +1076,7 @@
 
   .outline-link {
     display: block;
-    font-family: var(--font-sans);
+    font-family: var(--font-ui);
     font-size: 12.5px;
     line-height: 1.4;
     color: var(--text-tertiary);

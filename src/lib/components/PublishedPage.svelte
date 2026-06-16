@@ -1669,7 +1669,7 @@
   }
 
   .doc-meta-url {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 12px;
     color: var(--text-tertiary);
     margin-bottom: 28px;
@@ -1699,7 +1699,7 @@
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 12px;
     color: var(--text-tertiary);
     margin: 0 0 48px;
@@ -1727,7 +1727,7 @@
     border-radius: 6px;
     background: transparent;
     color: var(--text-tertiary);
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.02em;
