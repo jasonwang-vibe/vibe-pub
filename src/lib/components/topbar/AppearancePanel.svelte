@@ -1,9 +1,13 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import {
+    ALL_FONT_PAIRING_IDS,
     READER_APPEARANCE_THEMES,
     READER_MEASURE_OPTIONS,
+    effectiveFontPairingId,
+    fontPairingsForTheme,
     measureLabel,
+    readerFontPairings,
     readerFontSize,
     readerMeasure,
     readerReadingMode,
@@ -39,9 +43,32 @@
   let effectiveTheme = $derived(($readerThemePreview ?? publishedTheme ?? 'default') as PageTheme);
   let measureValLabel = $derived(measureLabel($readerMeasure));
 
+  // ── Typography: per-theme font pairings ──────────────────────────
+  let themePairings = $derived(fontPairingsForTheme(effectiveTheme));
+  let activePairingId = $derived(effectiveFontPairingId(effectiveTheme, $readerFontPairings));
+  let activePairing = $derived(themePairings.find((p) => p.id === activePairingId) ?? null);
+
   function onThemePick(id: PageTheme) {
     readerThemePreview.set(id);
   }
+
+  function onPairingPick(id: string) {
+    readerFontPairings.update((m) => ({ ...m, [effectiveTheme]: id }));
+  }
+
+  // Apply the chosen pairing as a `.font-pair-<id>` class on <html>; the CSS
+  // (app.css) scopes the font overrides to the matching `.theme-*` wrapper.
+  // The teardown clears every pairing class so a choice can't leak onto another
+  // page (e.g. the playground) after a client-side navigation.
+  $effect(() => {
+    if (!browser) return;
+    const root = document.documentElement;
+    const id = activePairingId;
+    if (id) root.classList.add(`font-pair-${id}`);
+    return () => {
+      for (const p of ALL_FONT_PAIRING_IDS) root.classList.remove(`font-pair-${p}`);
+    };
+  });
 
   function onMeasurePick(value: ReaderMeasure) {
     readerMeasure.set(value);
@@ -106,6 +133,31 @@
       {/each}
     </div>
   </div>
+
+  {#if themePairings.length > 0}
+    <div class="ap-section">
+      <div class="ap-label">
+        Typography <span class="val">{activePairing?.heading ?? ''}</span>
+      </div>
+      <div class="pairing-grid">
+        {#each themePairings as pair (pair.id)}
+          <button
+            type="button"
+            class="pairing-chip"
+            class:active={activePairingId === pair.id}
+            onclick={() => onPairingPick(pair.id)}
+          >
+            <span class="pairing-head" style="font-family: '{pair.heading}', Georgia, serif"
+              >{pair.heading}</span
+            >
+            <span class="pairing-body" style="font-family: '{pair.body}', Georgia, serif"
+              >{pair.body}</span
+            >
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <div class="ap-section">
     <div class="ap-label">
@@ -310,6 +362,56 @@
   :global(.ap-chip-terminal) {
     background: #0c0c0c;
     color: #4ade80;
+  }
+
+  /* ── Typography pairing chips ── */
+  .pairing-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .pairing-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    min-width: 0;
+  }
+
+  .pairing-chip:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-hover, var(--text-tertiary));
+  }
+
+  .pairing-chip.active {
+    border-color: var(--text-primary);
+  }
+
+  .pairing-head {
+    font-size: 17px;
+    line-height: 1.15;
+    color: var(--text-primary);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pairing-body {
+    font-size: 12px;
+    color: var(--text-secondary);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .ap-row {

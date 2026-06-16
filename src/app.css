@@ -757,7 +757,18 @@ article.doc-view.prose :where(li),
   --text-tertiary: #a8a29e;
   --border: rgba(0, 0, 0, 0.06);
   --accent: #92400e;
-  --font-prose: Georgia, 'Times New Roman', serif;
+  /* Default font pairing → "Paper 01": Libre Baskerville headings + EB Garamond body. */
+  --font-serif: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+  --font-display: 'Libre Baskerville', Georgia, serif;
+  --font-prose: 'EB Garamond', Georgia, 'Times New Roman', serif;
+}
+
+/* "Paper 02": Cormorant Garamond headings + Newsreader body.
+   Applied when the appearance panel sets `.font-pair-paper-02` on <html>. */
+.font-pair-paper-02 .theme-paper {
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-prose: 'Newsreader', Georgia, 'Times New Roman', serif;
 }
 .dark .theme-paper {
   --bg: #1a1816;
