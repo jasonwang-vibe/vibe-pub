@@ -91,10 +91,20 @@
     /* ── Reader doc prose (comfortable reading scale) ─ */
     --reader-font-size: 16px;
     --reader-line-height: 1.65;
+    --reader-letter-spacing: 0em;
     --reader-measure: 780px;
     --reader-h1-size: 40px;
+    --reader-h1-line-height: 1.1;
+    --reader-h1-letter-spacing: -0.025em;
     --reader-h2-size: 28px;
+    --reader-h2-line-height: 1.2;
+    --reader-h2-letter-spacing: -0.02em;
     --reader-h3-size: 20px;
+    --reader-h3-line-height: 1.28;
+    --reader-h3-letter-spacing: -0.01em;
+    --reader-h4-size: 18px;
+    --reader-h4-line-height: 1.4;
+    --reader-h4-letter-spacing: -0.01em;
     --reader-lede-size: 19px;
     --reader-block-gap: 18px;
     --reader-h2-margin-top: 48px;
@@ -549,20 +559,33 @@
     font-family: var(--font-prose);
     font-size: var(--reader-font-size);
     line-height: var(--reader-line-height);
+    letter-spacing: var(--reader-letter-spacing);
+  }
+
+  .prose :where(h1) {
+    font-size: var(--reader-h1-size);
+    line-height: var(--reader-h1-line-height);
+    letter-spacing: var(--reader-h1-letter-spacing);
   }
 
   .prose :where(h2) {
     font-size: var(--reader-h2-size);
-    line-height: 1.2;
-    letter-spacing: -0.02em;
+    line-height: var(--reader-h2-line-height);
+    letter-spacing: var(--reader-h2-letter-spacing);
     margin: var(--reader-h2-margin-top) 0 var(--reader-h2-margin-bottom);
   }
 
   .prose :where(h3) {
     font-size: var(--reader-h3-size);
-    line-height: 1.28;
-    letter-spacing: -0.01em;
+    line-height: var(--reader-h3-line-height);
+    letter-spacing: var(--reader-h3-letter-spacing);
     margin: var(--reader-h3-margin-top) 0 var(--reader-h3-margin-bottom);
+  }
+
+  .prose :where(h4) {
+    font-size: var(--reader-h4-size);
+    line-height: var(--reader-h4-line-height);
+    letter-spacing: var(--reader-h4-letter-spacing);
   }
 
   .prose :where(ul, ol) {
@@ -576,7 +599,6 @@
   .prose :where(h1, h2, h3, h4) {
     font-family: var(--font-serif);
     font-weight: 700;
-    letter-spacing: -0.02em;
   }
 
   .prose :where(code):not(:where(pre code)) {
@@ -704,6 +726,7 @@ article.doc-view.prose,
   font-family: var(--font-prose);
   font-size: var(--reader-font-size);
   line-height: var(--reader-line-height);
+  letter-spacing: var(--reader-letter-spacing);
   color: var(--text-primary);
 }
 
@@ -717,8 +740,8 @@ article.doc-view.prose :where(h2),
   font-family: var(--font-serif);
   font-weight: 700;
   font-size: var(--reader-h2-size);
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  line-height: var(--reader-h2-line-height);
+  letter-spacing: var(--reader-h2-letter-spacing);
   margin: var(--reader-h2-margin-top) 0 var(--reader-h2-margin-bottom);
   scroll-margin-top: 96px;
   color: var(--text-primary);
@@ -729,9 +752,20 @@ article.doc-view.prose :where(h3),
   font-family: var(--font-serif);
   font-weight: 700;
   font-size: var(--reader-h3-size);
-  line-height: 1.28;
-  letter-spacing: -0.01em;
+  line-height: var(--reader-h3-line-height);
+  letter-spacing: var(--reader-h3-letter-spacing);
   margin: var(--reader-h3-margin-top) 0 var(--reader-h3-margin-bottom);
+  scroll-margin-top: 96px;
+  color: var(--text-primary);
+}
+
+article.doc-view.prose :where(h4),
+.doc-article .doc-view h4 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: var(--reader-h4-size);
+  line-height: var(--reader-h4-line-height);
+  letter-spacing: var(--reader-h4-letter-spacing);
   scroll-margin-top: 96px;
   color: var(--text-primary);
 }

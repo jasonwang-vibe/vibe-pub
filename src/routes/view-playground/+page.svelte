@@ -17,6 +17,19 @@
     fontPairingsForTheme,
   } from '$lib/components/topbar/appearance';
   import {
+    ALL_TYPO_CSS_VARS,
+    READER_TYPO_CONTROLS,
+    clearTypographyForTheme,
+    controlFor,
+    defaultTypography,
+    loadSavedTypography,
+    saveTypographyForTheme,
+    typographyIsDefault,
+    typographyToCssVars,
+    type ReaderTypoElement,
+    type ReaderTypography,
+  } from '$lib/reader-typography';
+  import {
     kanbanReaderBoardFullwidth,
     playgroundPanelOpen,
     playgroundPreviewActive,
@@ -97,6 +110,41 @@
   let themeOption = $state('default');
   let theme = $derived(THEME_OPTIONS.find((o) => o.value === themeOption)?.theme ?? 'default');
   let pairing = $derived(THEME_OPTIONS.find((o) => o.value === themeOption)?.pairing ?? null);
+
+  // ── Typography (per-theme size / line-height / kerning) ──────────
+  const ALL_THEME_IDS = [...new Set(THEME_OPTIONS.map((o) => o.theme))];
+  const cloneTypo = (t: ReaderTypography): ReaderTypography => JSON.parse(JSON.stringify(t));
+  let savedTypo = $state<Record<string, ReaderTypography>>(loadSavedTypography());
+  // Working (live) settings per theme — seeded from saved defaults, else built-ins.
+  let typoByTheme = $state<Record<string, ReaderTypography>>(
+    Object.fromEntries(
+      ALL_THEME_IDS.map((t) => [t, savedTypo[t] ? cloneTypo(savedTypo[t]) : defaultTypography()])
+    )
+  );
+  let typoElement = $state<ReaderTypoElement>('body');
+
+  let curControl = $derived(controlFor(typoElement));
+  let curValues = $derived(typoByTheme[theme][typoElement]);
+  let typoDirty = $derived(
+    savedTypo[theme]
+      ? JSON.stringify(typoByTheme[theme]) !== JSON.stringify(savedTypo[theme])
+      : !typographyIsDefault(typoByTheme[theme])
+  );
+
+  function setTypoField(prop: 'size' | 'lineHeight' | 'letterSpacing', value: number) {
+    typoByTheme[theme][typoElement][prop] = value;
+  }
+  function saveTypoDefault() {
+    saveTypographyForTheme(theme, typoByTheme[theme]);
+    savedTypo = { ...savedTypo, [theme]: cloneTypo(typoByTheme[theme]) };
+  }
+  function resetTypo() {
+    typoByTheme[theme] = defaultTypography();
+    clearTypographyForTheme(theme);
+    const next = { ...savedTypo };
+    delete next[theme];
+    savedTypo = next;
+  }
   let dark = $state(false);
   let viewOverride = $state('doc');
   let dragging = $state(false);
@@ -350,6 +398,19 @@
     if (id) root.classList.add(`font-pair-${id}`);
     return () => {
       for (const p of ALL_FONT_PAIRING_IDS) root.classList.remove(`font-pair-${p}`);
+    };
+  });
+
+  // ── Typography → live `--reader-*` overrides on <html> ───────────
+  // Reads the active theme's working settings (deeply reactive) so slider drags
+  // update the preview instantly; teardown clears them on unmount/navigation.
+  $effect(() => {
+    if (!browser) return;
+    const root = document.documentElement;
+    const vars = typographyToCssVars(typoByTheme[theme]);
+    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+    return () => {
+      for (const k of ALL_TYPO_CSS_VARS) root.style.removeProperty(k);
     };
   });
 
@@ -674,6 +735,85 @@
       <input type="checkbox" bind:checked={dark} />
       <span>dark</span>
     </label>
+  </div>
+
+  <div class="panel-sep"></div>
+
+  <!-- Typography: per-element size / line-height / kerning -->
+  <div class="panel-section panel-typo">
+    <div class="panel-section-head">
+      <span class="panel-section-title">Typography · {theme}</span>
+      {#if typoDirty}<span class="panel-typo-dirty">unsaved</span>{/if}
+    </div>
+
+    <div class="panel-typo-tabs">
+      {#each READER_TYPO_CONTROLS as c (c.key)}
+        <button
+          type="button"
+          class="panel-typo-tab"
+          class:active={typoElement === c.key}
+          onclick={() => (typoElement = c.key)}>{c.label}</button
+        >
+      {/each}
+    </div>
+
+    <div class="panel-typo-field">
+      <div class="panel-typo-label">
+        <span>Size</span><span class="val">{curValues.size}px</span>
+      </div>
+      <input
+        type="range"
+        min={curControl.size.min}
+        max={curControl.size.max}
+        step={curControl.size.step}
+        value={curValues.size}
+        aria-label="{curControl.label} size"
+        oninput={(e) => setTypoField('size', Number(e.currentTarget.value))}
+      />
+    </div>
+
+    <div class="panel-typo-field">
+      <div class="panel-typo-label">
+        <span>Line height</span><span class="val">{curValues.lineHeight.toFixed(2)}</span>
+      </div>
+      <input
+        type="range"
+        min={curControl.lineHeight.min}
+        max={curControl.lineHeight.max}
+        step={curControl.lineHeight.step}
+        value={curValues.lineHeight}
+        aria-label="{curControl.label} line height"
+        oninput={(e) => setTypoField('lineHeight', Number(e.currentTarget.value))}
+      />
+    </div>
+
+    <div class="panel-typo-field">
+      <div class="panel-typo-label">
+        <span>Letter spacing</span><span class="val">{curValues.letterSpacing.toFixed(3)}em</span>
+      </div>
+      <input
+        type="range"
+        min={curControl.letterSpacing.min}
+        max={curControl.letterSpacing.max}
+        step={curControl.letterSpacing.step}
+        value={curValues.letterSpacing}
+        aria-label="{curControl.label} letter spacing"
+        oninput={(e) => setTypoField('letterSpacing', Number(e.currentTarget.value))}
+      />
+    </div>
+
+    <div class="panel-typo-actions">
+      <button
+        type="button"
+        class="panel-typo-save"
+        disabled={!typoDirty}
+        onclick={saveTypoDefault}
+        title="Save as the default for the {theme} theme (this browser)"
+      >
+        Save as default
+      </button>
+      <button type="button" class="panel-typo-reset" onclick={resetTypo}>Reset</button>
+    </div>
   </div>
 
   <div class="panel-sep"></div>
@@ -1474,6 +1614,141 @@
     font-size: 12px;
     color: var(--text-secondary);
     cursor: pointer;
+  }
+
+  /* ── Typography controls ── */
+  .panel-typo .panel-typo-dirty {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+
+  .panel-typo-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+
+  .panel-typo-tab {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 5px 0;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .panel-typo-tab:hover {
+    color: var(--text-primary);
+    border-color: var(--text-tertiary);
+  }
+
+  .panel-typo-tab.active {
+    background: var(--text-primary);
+    color: var(--bg);
+    border-color: var(--text-primary);
+  }
+
+  .panel-typo-field {
+    margin-bottom: 12px;
+  }
+
+  .panel-typo-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+  }
+
+  .panel-typo-label .val {
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .panel-typo-field input[type='range'] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 999px;
+    outline: none;
+  }
+
+  .panel-typo-field input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    background: var(--text-primary);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .panel-typo-field input[type='range']::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    background: var(--text-primary);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+  }
+
+  .panel-typo-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .panel-typo-save {
+    flex: 1;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: none;
+    background: var(--text-primary);
+    color: var(--bg);
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+
+  .panel-typo-save:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+
+  .panel-typo-save:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .panel-typo-reset {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .panel-typo-reset:hover {
+    color: var(--text-primary);
+    border-color: var(--text-tertiary);
   }
 
   /* Separator */
