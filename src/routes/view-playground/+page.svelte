@@ -11,7 +11,11 @@
   import FolderView from '$lib/templates/folder/FolderView.svelte';
   import PlaygroundCollection from './PlaygroundCollection.svelte';
   import { PLAYGROUND_COLLECTION_SLUG } from '$lib/templates/collection/playground-slug';
-  import { READER_APPEARANCE_THEMES } from '$lib/components/topbar/appearance';
+  import {
+    ALL_FONT_PAIRING_IDS,
+    READER_APPEARANCE_THEMES,
+    fontPairingsForTheme,
+  } from '$lib/components/topbar/appearance';
   import {
     kanbanReaderBoardFullwidth,
     playgroundPanelOpen,
@@ -58,15 +62,41 @@
     ts: number;
   }
 
-  // The same 6 themes as the reader Appearance panel (READER_APPEARANCE_THEMES),
-  // so the playground control stays in sync with what the reader exposes.
-  const THEMES = READER_APPEARANCE_THEMES.map((t) => t.id);
+  // Theme dropdown options. Mirrors the reader Appearance panel themes, but a
+  // theme that defines font pairings (e.g. Paper → "Paper 01"/"Paper 02") is
+  // expanded into one option per pairing.
+  interface ThemeOption {
+    /** Dropdown value — a pairing id (`paper-02`) or a bare theme id. */
+    value: string;
+    label: string;
+    /** PageTheme id for the `.theme-*` class + publish payload. */
+    theme: string;
+    /** `.font-pair-*` id to apply on <html>, or null for the theme default. */
+    pairing: string | null;
+  }
+
+  const THEME_OPTIONS: ThemeOption[] = READER_APPEARANCE_THEMES.flatMap((t): ThemeOption[] => {
+    const pairings = fontPairingsForTheme(t.id);
+    if (pairings.length) {
+      return pairings.map((p) => ({
+        value: p.id,
+        label: `${t.label} ${p.label}`,
+        theme: t.id,
+        pairing: p.id,
+      }));
+    }
+    return [{ value: t.id, label: t.label, theme: t.id, pairing: null }];
+  });
+
   const HISTORY_KEY = 'vibe-pg-history';
   const MAX_HISTORY = 20;
 
   let files = $state<UFile[]>([]);
   let pasteText = $state('');
-  let theme = $state('default');
+  // Selected dropdown option; `theme` + `pairing` derive from it.
+  let themeOption = $state('default');
+  let theme = $derived(THEME_OPTIONS.find((o) => o.value === themeOption)?.theme ?? 'default');
+  let pairing = $derived(THEME_OPTIONS.find((o) => o.value === themeOption)?.pairing ?? null);
   let dark = $state(false);
   let viewOverride = $state('doc');
   let dragging = $state(false);
@@ -140,7 +170,10 @@
     pasteText = '';
     if (sel.length === 1) {
       viewOverride = sel[0].view ?? 'doc';
-      theme = sel[0].theme ?? 'default';
+      // Map the page's stored theme to its first matching dropdown option
+      // (e.g. a `paper` page selects "Paper 01").
+      const t = sel[0].theme ?? 'default';
+      themeOption = THEME_OPTIONS.find((o) => o.theme === t)?.value ?? 'default';
       activeFile = files[0].name;
     } else {
       // Multiple files → folder view (no single active file).
@@ -305,6 +338,19 @@
     if (!browser) return;
     document.documentElement.classList.toggle('dark', dark);
     return () => document.documentElement.classList.remove('dark');
+  });
+
+  // ── Font pairing (Paper 01 / Paper 02 …) ─────────────────────────
+  // Mirror the reader Appearance panel: toggle `.font-pair-<id>` on <html>;
+  // app.css scopes the font overrides to the matching `.theme-*` stage.
+  $effect(() => {
+    if (!browser) return;
+    const root = document.documentElement;
+    const id = pairing;
+    if (id) root.classList.add(`font-pair-${id}`);
+    return () => {
+      for (const p of ALL_FONT_PAIRING_IDS) root.classList.remove(`font-pair-${p}`);
+    };
   });
 
   // ── Close panel on Escape or click outside ───────────────────────
@@ -619,8 +665,9 @@
   <div class="panel-controls">
     <label class="panel-field">
       <span class="panel-field-label">theme</span>
-      <select bind:value={theme}>
-        {#each THEMES as t}<option value={t}>{t}</option>{/each}
+      <select bind:value={themeOption}>
+        {#each THEME_OPTIONS as opt (opt.value)}<option value={opt.value}>{opt.label}</option
+          >{/each}
       </select>
     </label>
     <label class="panel-check">

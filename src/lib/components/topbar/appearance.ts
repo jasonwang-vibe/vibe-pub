@@ -37,6 +37,52 @@ export const READER_MEASURE_OPTIONS: {
   { value: '880px', label: 'wide' },
 ];
 
+/** A heading + body font pairing offered for a theme's typography setting. */
+export interface FontPairing {
+  /** Matches the `.font-pair-<id>` selector in app.css (e.g. `paper-02`). */
+  id: string;
+  /** Short chip label, e.g. `01`. */
+  label: string;
+  /** Heading font display name (shown in the chip). */
+  heading: string;
+  /** Body font display name (shown in the chip). */
+  body: string;
+}
+
+/**
+ * Per-theme font pairings. The FIRST entry is the theme's default — it is baked
+ * into the `.theme-*` base rules in app.css, so it needs no `.font-pair-*` class.
+ * Additional entries are applied by toggling `.font-pair-<id>` on `<html>`.
+ */
+export const THEME_FONT_PAIRINGS: Partial<Record<PageTheme, FontPairing[]>> = {
+  paper: [
+    { id: 'paper-01', label: '01', heading: 'Libre Baskerville', body: 'EB Garamond' },
+    { id: 'paper-02', label: '02', heading: 'Cormorant Garamond', body: 'Newsreader' },
+  ],
+};
+
+/** Font pairings available for a theme (empty when the theme has none). */
+export function fontPairingsForTheme(theme: PageTheme | null | undefined): FontPairing[] {
+  return (theme ? THEME_FONT_PAIRINGS[theme] : undefined) ?? [];
+}
+
+/** Selected pairing id for a theme, falling back to its default (first) pairing. */
+export function effectiveFontPairingId(
+  theme: PageTheme | null | undefined,
+  selections: Record<string, string>
+): string | null {
+  const pairings = fontPairingsForTheme(theme);
+  if (!pairings.length) return null;
+  const sel = theme ? selections[theme] : undefined;
+  if (sel && pairings.some((p) => p.id === sel)) return sel;
+  return pairings[0].id;
+}
+
+/** Every pairing id across all themes — the `.font-pair-*` classes we toggle on `<html>`. */
+export const ALL_FONT_PAIRING_IDS: string[] = Object.values(THEME_FONT_PAIRINGS)
+  .flatMap((pairings) => pairings ?? [])
+  .map((p) => p.id);
+
 const LEGACY_MEASURE_MAP: Record<string, ReaderMeasure> = {
   '580px': '680px',
   '680px': '780px',
@@ -55,13 +101,30 @@ type AppearancePrefs = {
   fontSize: number;
   measure: ReaderMeasure;
   readingMode: ReaderReadingMode;
+  /** Map of theme id → chosen font-pairing id (only non-default choices persist). */
+  fontPairings: Record<string, string>;
 };
+
+function normalizeFontPairings(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, string> = {};
+  for (const [theme, id] of Object.entries(raw as Record<string, unknown>)) {
+    if (
+      typeof id === 'string' &&
+      fontPairingsForTheme(theme as PageTheme).some((p) => p.id === id)
+    ) {
+      out[theme] = id;
+    }
+  }
+  return out;
+}
 
 function loadPrefs(): AppearancePrefs {
   const defaults: AppearancePrefs = {
     fontSize: 18,
     measure: '780px',
     readingMode: 'paged',
+    fontPairings: {},
   };
   if (!browser) return defaults;
   try {
@@ -77,7 +140,8 @@ function loadPrefs(): AppearancePrefs {
       parsed.readingMode === 'scroll' || parsed.readingMode === 'paged'
         ? parsed.readingMode
         : defaults.readingMode;
-    return { fontSize, measure, readingMode };
+    const fontPairings = normalizeFontPairings(parsed.fontPairings);
+    return { fontSize, measure, readingMode, fontPairings };
   } catch {
     return defaults;
   }
@@ -90,6 +154,8 @@ export const readerThemePreview = writable<PageTheme | null>(null);
 export const readerFontSize = writable(initialPrefs.fontSize);
 export const readerMeasure = writable<ReaderMeasure>(initialPrefs.measure);
 export const readerReadingMode = writable<ReaderReadingMode>(initialPrefs.readingMode);
+/** Map of theme id → chosen font-pairing id (see {@link THEME_FONT_PAIRINGS}). */
+export const readerFontPairings = writable<Record<string, string>>(initialPrefs.fontPairings);
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -104,6 +170,7 @@ function schedulePersist() {
         fontSize: get(readerFontSize),
         measure: get(readerMeasure),
         readingMode: get(readerReadingMode),
+        fontPairings: get(readerFontPairings),
       })
     );
   }, 120);
@@ -113,6 +180,7 @@ if (browser) {
   readerFontSize.subscribe(schedulePersist);
   readerMeasure.subscribe(schedulePersist);
   readerReadingMode.subscribe(schedulePersist);
+  readerFontPairings.subscribe(schedulePersist);
 }
 
 export function readerEffectiveTheme(published: PageTheme | null | undefined): PageTheme {
