@@ -59,6 +59,22 @@ export const THEME_FONT_PAIRINGS: Partial<Record<PageTheme, FontPairing[]>> = {
     { id: 'paper-01', label: '01', heading: 'Libre Baskerville', body: 'EB Garamond' },
     { id: 'paper-02', label: '02', heading: 'Cormorant Garamond', body: 'Newsreader' },
   ],
+  claude: [
+    { id: 'claude-01', label: '01', heading: 'DM Serif Display', body: 'DM Sans' },
+    { id: 'claude-02', label: '02', heading: 'Spectral', body: 'Plus Jakarta Sans' },
+  ],
+  solarized: [
+    { id: 'solarized-01', label: '01', heading: 'IBM Plex Sans', body: 'IBM Plex Sans' },
+    { id: 'solarized-02', label: '02', heading: 'DM Sans', body: 'Nunito' },
+  ],
+  midnight: [
+    { id: 'midnight-01', label: '01', heading: 'Cinzel', body: 'Quattrocento Sans' },
+    { id: 'midnight-02', label: '02', heading: 'Marvel', body: 'Barlow' },
+  ],
+  terminal: [
+    { id: 'terminal-01', label: '01', heading: 'JetBrains Mono', body: 'JetBrains Mono' },
+    { id: 'terminal-02', label: '02', heading: 'IBM Plex Mono', body: 'IBM Plex Mono' },
+  ],
 };
 
 /** Font pairings available for a theme (empty when the theme has none). */

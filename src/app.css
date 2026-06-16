@@ -792,7 +792,17 @@ article.doc-view.prose :where(li),
   --text-tertiary: #166534;
   --border: rgba(74, 222, 128, 0.12);
   --accent: #4ade80;
+  /* Default font pairing → "Terminal 01": JetBrains Mono throughout. */
+  --font-serif: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-display: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
   --font-prose: var(--font-mono);
+}
+
+/* "Terminal 02": IBM Plex Mono throughout. */
+.font-pair-terminal-02 .theme-terminal {
+  --font-serif: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-display: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-prose: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
 }
 
 .theme-midnight {
@@ -803,7 +813,17 @@ article.doc-view.prose :where(li),
   --text-tertiary: #475569;
   --border: rgba(255, 255, 255, 0.08);
   --accent: #818cf8;
-  --font-prose: var(--font-sans);
+  /* Default font pairing → "Midnight 01": Cinzel headings + Quattrocento Sans body. */
+  --font-serif: 'Cinzel', Georgia, serif;
+  --font-display: 'Cinzel', Georgia, serif;
+  --font-prose: 'Quattrocento Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* "Midnight 02": Marvel headings + Barlow body. */
+.font-pair-midnight-02 .theme-midnight {
+  --font-serif: 'Marvel', -apple-system, sans-serif;
+  --font-display: 'Marvel', -apple-system, sans-serif;
+  --font-prose: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .theme-rose {
@@ -874,7 +894,17 @@ article.doc-view.prose :where(li),
   --text-tertiary: #87867f;
   --border: rgba(20, 20, 19, 0.08);
   --accent: #c96442;
-  --font-prose: Georgia, 'Times New Roman', serif;
+  /* Default font pairing → "Claude 01": DM Serif Display headings + DM Sans body. */
+  --font-serif: 'DM Serif Display', Georgia, serif;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-prose: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* "Claude 02": Spectral headings + Plus Jakarta Sans body. */
+.font-pair-claude-02 .theme-claude {
+  --font-serif: 'Spectral', Georgia, 'Times New Roman', serif;
+  --font-display: 'Spectral', Georgia, serif;
+  --font-prose: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .dark .theme-claude {
   --bg: #141413;
@@ -950,6 +980,17 @@ article.doc-view.prose :where(li),
   --text-tertiary: #93a1a1;
   --border: rgba(7, 54, 66, 0.1);
   --accent: #268bd2;
+  /* Default font pairing → "Solarized 01": IBM Plex Sans throughout. */
+  --font-serif: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-prose: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* "Solarized 02": DM Sans headings + Nunito body. */
+.font-pair-solarized-02 .theme-solarized {
+  --font-serif: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-prose: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .dark .theme-solarized {
   --bg: #002b36;
